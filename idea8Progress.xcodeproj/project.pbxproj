@@ -19,6 +19,9 @@
 		A1000000000000000000003B /* menuBarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001B /* menuBarPanel.swift */; };
 		A1000000000000000000003F /* panelPinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000021 /* panelPinStore.swift */; };
 		A10000000000000000000040 /* pinnedPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* pinnedPanel.swift */; };
+		A10000000000000000000047 /* hotKeyShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000023 /* hotKeyShortcut.swift */; };
+		A10000000000000000000048 /* globalHotKeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000024 /* globalHotKeyCenter.swift */; };
+		A1000000000000000000004A /* hotKeyChecks.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000026 /* hotKeyChecks.swift */; };
 		A1000000000000000000003C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001C /* Assets.xcassets */; };
 		A1000000000000000000003D /* earningsChecks.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001F /* earningsChecks.swift */; };
 		A1000000000000000000003E /* earningsCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* earningsCalculatorTests.swift */; };
@@ -47,6 +50,9 @@
 		A1000000000000000000001B /* menuBarPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = menuBarPanel.swift; sourceTree = "<group>"; };
 		A10000000000000000000021 /* panelPinStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = panelPinStore.swift; sourceTree = "<group>"; };
 		A10000000000000000000022 /* pinnedPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pinnedPanel.swift; sourceTree = "<group>"; };
+		A10000000000000000000023 /* hotKeyShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = hotKeyShortcut.swift; sourceTree = "<group>"; };
+		A10000000000000000000024 /* globalHotKeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = globalHotKeyCenter.swift; sourceTree = "<group>"; };
+		A10000000000000000000026 /* hotKeyChecks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = hotKeyChecks.swift; sourceTree = "<group>"; };
 		A1000000000000000000001C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000000000000000000001D /* idea8Progress.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = idea8Progress.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000000000000000000001E /* idea8ProgressTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = idea8ProgressTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -96,6 +102,8 @@
 				A1000000000000000000001B /* menuBarPanel.swift */,
 				A10000000000000000000021 /* panelPinStore.swift */,
 				A10000000000000000000022 /* pinnedPanel.swift */,
+				A10000000000000000000023 /* hotKeyShortcut.swift */,
+				A10000000000000000000024 /* globalHotKeyCenter.swift */,
 				A1000000000000000000001C /* Assets.xcassets */,
 			);
 			path = idea8Progress;
@@ -106,6 +114,7 @@
 			children = (
 				A1000000000000000000001F /* earningsChecks.swift */,
 				A10000000000000000000020 /* earningsCalculatorTests.swift */,
+				A10000000000000000000026 /* hotKeyChecks.swift */,
 			);
 			path = idea8ProgressTests;
 			sourceTree = "<group>";
@@ -223,6 +232,8 @@
 				A1000000000000000000003B /* menuBarPanel.swift in Sources */,
 				A1000000000000000000003F /* panelPinStore.swift in Sources */,
 				A10000000000000000000040 /* pinnedPanel.swift in Sources */,
+				A10000000000000000000047 /* hotKeyShortcut.swift in Sources */,
+				A10000000000000000000048 /* globalHotKeyCenter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -232,6 +243,7 @@
 			files = (
 				A1000000000000000000003D /* earningsChecks.swift in Sources */,
 				A1000000000000000000003E /* earningsCalculatorTests.swift in Sources */,
+				A1000000000000000000004A /* hotKeyChecks.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

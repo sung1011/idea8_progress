@@ -146,6 +146,20 @@ final class PanelPinController: NSObject, ObservableObject, NSWindowDelegate {
         }
     }
 
+    /// 全局快捷键。没固定时点菜单栏图标来打开或收起；固定时显示浮动窗口，再按一次先收起，固定状态保留。
+    func toggleFromHotKey() {
+        if isPinned {
+            togglePinnedVisibility()
+            return
+        }
+        if MenuBarStatusItemCapture.click() {
+            return
+        }
+        if let window = visibleMenuBarWindow() {
+            dismissMenuBarWindow(window)
+        }
+    }
+
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === panel else { return }
         saveFrame(of: window)
@@ -160,6 +174,22 @@ final class PanelPinController: NSObject, ObservableObject, NSWindowDelegate {
     func windowDidMove(_ notification: Notification) {
         guard !adjustingFrame, let window = notification.object as? NSWindow, window === panel else { return }
         saveFrame(of: window)
+    }
+
+    private func togglePinnedVisibility() {
+        if let panel, panel.isVisible, panel.isKeyWindow, NSApp.isActive {
+            panel.orderOut(nil)
+            return
+        }
+        let reposition = panel?.isVisible != true
+        presentPinnedPanel(anchor: nil, reposition: reposition, focus: true)
+    }
+
+    private func visibleMenuBarWindow() -> NSWindow? {
+        guard let menuBarWindow, menuBarWindow !== panel else { return nil }
+        if menuBarWindow.identifier == PinnedPanel.panelIdentifier { return nil }
+        guard menuBarWindow.isVisible, menuBarWindow.alphaValue > 0.05 else { return nil }
+        return menuBarWindow
     }
 
     private func pin() {

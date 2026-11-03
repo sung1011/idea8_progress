@@ -6,12 +6,14 @@ struct SettingsPanel: View {
     @ObservedObject var model: EarningsModel
     var onDone: () -> Void
 
+    @ObservedObject private var hotKeys = GlobalHotKeyCenter.shared
     @State private var monthlyText: String
     @State private var expandedTime: TimeEditor? = nil
 
     init(model: EarningsModel, onDone: @escaping () -> Void) {
         self.model = model
         self.onDone = onDone
+        _hotKeys = ObservedObject(wrappedValue: GlobalHotKeyCenter.shared)
         _monthlyText = State(initialValue: MoneyFormat.editable(model.settings.monthlySalary))
     }
 
@@ -26,6 +28,7 @@ struct SettingsPanel: View {
                 salaryField
                 weekdaySection
                 scheduleSection
+                hotKeySection
             }
             .padding(.horizontal, 20)
             .padding(.top, 18)
@@ -40,7 +43,7 @@ struct SettingsPanel: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(.primary)
             HStack {
-                Button(action: onDone) {
+                Button(action: closeSettings) {
                     HStack(spacing: 2) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 13, weight: .semibold))
@@ -51,7 +54,7 @@ struct SettingsPanel: View {
                 }
                 .buttonStyle(.plain)
                 Spacer()
-                Button("完成", action: onDone)
+                Button("完成", action: closeSettings)
                     .buttonStyle(.plain)
                     .font(.system(size: 15))
                     .foregroundStyle(Color.blue)
@@ -152,6 +155,101 @@ struct SettingsPanel: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var hotKeySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("全局快捷键")
+                .font(.system(size: 15))
+                .foregroundStyle(.primary)
+            Text(hotKeyCaption)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                Button(action: hotKeys.beginRecording) {
+                    Text(hotKeys.isRecording ? "请按下快捷键…" : (hotKeys.shortcut?.display ?? "未设置"))
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(hotKeys.isRecording ? Color.blue : Color.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color(nsColor: .textBackgroundColor))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .strokeBorder(
+                                    hotKeys.isRecording ? Color.blue : Color.primary.opacity(0.16),
+                                    lineWidth: 1
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("录制全局快捷键")
+                Button("清除", action: hotKeys.clear)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 15))
+                    .foregroundStyle(hotKeys.shortcut == nil ? Color.secondary : Color.blue)
+                    .disabled(hotKeys.shortcut == nil)
+            }
+            if hotKeys.shortcut != .default {
+                Button("使用默认 ⌃⌥⌘P", action: hotKeys.useDefault)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.blue)
+            }
+            if let message = hotKeys.registrationError {
+                Text(message)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let note = hotKeys.statusNote {
+                Text(note)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if hotKeys.needsAccessibility {
+                accessibilityNotice
+            }
+        }
+        .onAppear { hotKeys.refreshPermission() }
+        .onDisappear { hotKeys.cancelRecording() }
+    }
+
+    private var hotKeyCaption: String {
+        if hotKeys.isRecording {
+            return "请按下新的组合键。至少带上 ⌃、⌥、⇧、⌘ 中的一个。按 Esc 取消。"
+        }
+        if hotKeys.shortcut == nil {
+            return "未设置。点下面的框按下组合键。默认建议是 ⌃⌥⌘P，用来打开或收起主面板。"
+        }
+        return "在任何应用里按下都会打开或收起主面板。面板已固定时，会把浮动窗口带到前面。"
+    }
+
+    private var accessibilityNotice: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("需要辅助功能权限，这个快捷键才能在其它应用前面生效。")
+                .font(.system(size: 12))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("打开「系统设置 → 隐私与安全性 → 辅助功能」，把「上班鼓励器」打开。")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("打开辅助功能设置", action: hotKeys.openAccessibilitySettings)
+                .buttonStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundStyle(Color.blue)
+        }
+    }
+
+    private func closeSettings() {
+        hotKeys.cancelRecording()
+        onDone()
     }
 
     private func weekdayChip(_ weekday: Int) -> some View {
