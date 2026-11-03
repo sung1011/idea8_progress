@@ -17,6 +17,8 @@
 		A10000000000000000000039 /* moneyFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000019 /* moneyFormat.swift */; };
 		A1000000000000000000003A /* menuBarLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001A /* menuBarLabel.swift */; };
 		A1000000000000000000003B /* menuBarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001B /* menuBarPanel.swift */; };
+		A1000000000000000000003F /* panelPinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000021 /* panelPinStore.swift */; };
+		A10000000000000000000040 /* pinnedPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* pinnedPanel.swift */; };
 		A1000000000000000000003C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001C /* Assets.xcassets */; };
 		A1000000000000000000003D /* earningsChecks.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001F /* earningsChecks.swift */; };
 		A1000000000000000000003E /* earningsCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* earningsCalculatorTests.swift */; };
@@ -43,6 +45,8 @@
 		A10000000000000000000019 /* moneyFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = moneyFormat.swift; sourceTree = "<group>"; };
 		A1000000000000000000001A /* menuBarLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = menuBarLabel.swift; sourceTree = "<group>"; };
 		A1000000000000000000001B /* menuBarPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = menuBarPanel.swift; sourceTree = "<group>"; };
+		A10000000000000000000021 /* panelPinStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = panelPinStore.swift; sourceTree = "<group>"; };
+		A10000000000000000000022 /* pinnedPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pinnedPanel.swift; sourceTree = "<group>"; };
 		A1000000000000000000001C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000000000000000000001D /* idea8Progress.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = idea8Progress.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000000000000000000001E /* idea8ProgressTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = idea8ProgressTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -90,6 +94,8 @@
 				A10000000000000000000019 /* moneyFormat.swift */,
 				A1000000000000000000001A /* menuBarLabel.swift */,
 				A1000000000000000000001B /* menuBarPanel.swift */,
+				A10000000000000000000021 /* panelPinStore.swift */,
+				A10000000000000000000022 /* pinnedPanel.swift */,
 				A1000000000000000000001C /* Assets.xcassets */,
 			);
 			path = idea8Progress;
@@ -215,6 +221,8 @@
 				A10000000000000000000039 /* moneyFormat.swift in Sources */,
 				A1000000000000000000003A /* menuBarLabel.swift in Sources */,
 				A1000000000000000000003B /* menuBarPanel.swift in Sources */,
+				A1000000000000000000003F /* panelPinStore.swift in Sources */,
+				A10000000000000000000040 /* pinnedPanel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

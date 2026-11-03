@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MenuBarPanel: View {
     @ObservedObject var model: EarningsModel
+    @ObservedObject var pins: PanelPinController
 
     @State private var showingSettings = false
 
@@ -16,7 +17,13 @@ struct MenuBarPanel: View {
                 dashboard
             }
         }
-        .onAppear(perform: activateApp)
+        .background(PanelWindowReader { pins.consumeWindow($0) })
+        .onAppear {
+            pins.bind(model)
+            if !pins.isPinned {
+                activateApp()
+            }
+        }
     }
 
     private var dashboard: some View {
@@ -135,18 +142,37 @@ struct MenuBarPanel: View {
     }
 
     private var footer: some View {
-        HStack {
-            Button("设置") {
-                showingSettings = true
+        ZStack {
+            HStack {
+                Button("设置") {
+                    showingSettings = true
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                Button("退出") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .buttonStyle(.plain)
+            }
+            .foregroundStyle(.primary)
+            Button {
+                pins.togglePinned()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: pins.isPinned ? "pin.fill" : "pin")
+                        .font(.system(size: 12, weight: .semibold))
+                        .accessibilityHidden(true)
+                    Text(pins.isPinned ? "取消固定" : "固定")
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.primary)
-            Spacer()
-            Button("退出") {
-                NSApplication.shared.terminate(nil)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.primary)
+            .foregroundStyle(pins.isPinned ? Color.blue : Color.primary)
+            .help(pins.isPinned ? "取消固定。之后点到面板外面会收起。" : "固定后面板会留在屏幕上，点到别处也不会收起。")
+            .accessibilityLabel(pins.isPinned ? "取消固定" : "固定")
+            .zIndex(1)
         }
         .font(.system(size: 15))
     }
@@ -197,6 +223,9 @@ struct MenuBarPanelPreview: PreviewProvider {
             model: EarningsModel(
                 defaults: UserDefaults(suiteName: "idea8Progress.preview") ?? .standard,
                 startTicker: false
+            ),
+            pins: PanelPinController(
+                defaults: UserDefaults(suiteName: "idea8Progress.preview") ?? .standard
             )
         )
     }

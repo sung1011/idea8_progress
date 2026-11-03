@@ -33,6 +33,7 @@ enum EarningsChecks {
             ("只勾选周一会改变分母", runner.mondayOnlyChangesProration),
             ("今天从上班重新计，不把昨天尾段算进来", runner.todayStartsAtScheduledWindow),
             ("设置可以保存再读出", runner.stateStoreRoundTrip),
+            ("固定状态单独保存", runner.panelPinPreferenceRoundTrip),
             ("旧存档里的计时和时薪不再参与计算", runner.legacyArchiveDropsTimerAndHourlyRate),
             ("损坏的存档回退到默认值", runner.corruptStoreFallsBack),
             ("金额输入解析", runner.moneyParsing)
@@ -348,6 +349,27 @@ private struct Runner {
         let text = String(decoding: saved, as: UTF8.self)
         try expectEqual(text.contains("timer"), false, "新存档不写计时")
         try expectEqual(text.contains("segments"), false, "新存档不写区间")
+    }
+
+    func panelPinPreferenceRoundTrip() throws {
+        let suite = "idea8Progress.tests.pin.\(UUID().uuidString)"
+        let defaults = try makeDefaults(suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        try expectEqual(PanelPinStore.loadPinned(defaults: defaults), false, "默认不固定")
+        PanelPinStore.savePinned(true, defaults: defaults)
+        try expectEqual(PanelPinStore.loadPinned(defaults: defaults), true, "固定会记住")
+        PanelPinStore.savePinned(false, defaults: defaults)
+        try expectEqual(PanelPinStore.loadPinned(defaults: defaults), false, "取消固定会记住")
+
+        let frame = StoredPanelFrame(x: 12, y: 34, width: 336, height: 420)
+        PanelPinStore.saveFrame(frame, defaults: defaults)
+        try expectEqual(PanelPinStore.loadFrame(defaults: defaults), frame, "浮动窗口位置会记住")
+        try expectEqual(StoredPanelFrame(encoded: "bad"), nil, "坏的位置数据忽略")
+        try expectEqual(StoredPanelFrame(encoded: "1,2,3,4"), nil, "过小的窗口忽略")
+        PanelPinStore.saveFrame(nil, defaults: defaults)
+        try expectEqual(PanelPinStore.loadFrame(defaults: defaults), nil, "位置可以清掉")
+        try expectEqual(PanelPinStore.pinnedKey == StateStore.storageKey, false, "固定状态不写进计薪存档")
     }
 
     func legacyArchiveDropsTimerAndHourlyRate() throws {
