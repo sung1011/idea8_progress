@@ -6,7 +6,7 @@ struct MenuBarLabel: View {
     var body: some View {
         Label(
             MoneyFormat.menuBar(snapshot.todayEarned),
-            systemImage: snapshot.timerRunning ? "play.circle.fill" : "pause.circle"
+            systemImage: snapshot.isEarningNow ? "play.circle.fill" : "pause.circle"
         )
     }
 }

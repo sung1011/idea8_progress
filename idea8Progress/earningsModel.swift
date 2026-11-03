@@ -5,7 +5,6 @@ import Foundation
 final class EarningsModel: ObservableObject {
     @Published private(set) var snapshot: EarningsSnapshot
     @Published private(set) var settings: AppSettings
-    @Published private(set) var timer: TimerState
 
     let calendar: Calendar
 
@@ -22,16 +21,15 @@ final class EarningsModel: ObservableObject {
         self.calendar = calendar
         let loaded = StateStore.load(defaults: defaults)
         settings = loaded.settings
-        timer = loaded.timer
         snapshot = EarningsCalculator.snapshot(
-            EarningsInput(now: now, calendar: calendar, settings: loaded.settings, timer: loaded.timer)
+            EarningsInput(now: now, calendar: calendar, settings: loaded.settings)
         )
         if startTicker {
-            let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            let refresh = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
                 self?.tick()
             }
-            RunLoop.main.add(timer, forMode: .common)
-            ticker = timer
+            RunLoop.main.add(refresh, forMode: .common)
+            ticker = refresh
         }
     }
 
@@ -40,23 +38,7 @@ final class EarningsModel: ObservableObject {
     }
 
     func tick(now: Date = Date()) {
-        let today = calendar.startOfDay(for: now)
-        let before = timer
-        timer.prune(keepingFrom: today)
         publish(now: now)
-        if timer != before {
-            persist()
-        }
-    }
-
-    func toggleTimer(now: Date = Date()) {
-        if timer.isRunning {
-            timer.stop(now: now)
-        } else {
-            timer.start(now: now)
-        }
-        publish(now: now)
-        persist()
     }
 
     func setMonthlySalary(_ value: Decimal, now: Date = Date()) {
@@ -88,11 +70,11 @@ final class EarningsModel: ObservableObject {
 
     private func publish(now: Date) {
         snapshot = EarningsCalculator.snapshot(
-            EarningsInput(now: now, calendar: calendar, settings: settings, timer: timer)
+            EarningsInput(now: now, calendar: calendar, settings: settings)
         )
     }
 
     private func persist() {
-        StateStore.save(PersistedState(settings: settings, timer: timer), defaults: defaults)
+        StateStore.save(PersistedState(settings: settings), defaults: defaults)
     }
 }

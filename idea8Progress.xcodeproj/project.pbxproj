@@ -10,7 +10,6 @@
 		A10000000000000000000031 /* idea8ProgressApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* idea8ProgressApp.swift */; };
 		A10000000000000000000032 /* settingsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* settingsPanel.swift */; };
 		A10000000000000000000033 /* workSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* workSchedule.swift */; };
-		A10000000000000000000034 /* timerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* timerState.swift */; };
 		A10000000000000000000035 /* appSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* appSettings.swift */; };
 		A10000000000000000000036 /* earningsCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* earningsCalculator.swift */; };
 		A10000000000000000000037 /* stateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* stateStore.swift */; };
@@ -37,7 +36,6 @@
 		A10000000000000000000011 /* idea8ProgressApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = idea8ProgressApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000012 /* settingsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = settingsPanel.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* workSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = workSchedule.swift; sourceTree = "<group>"; };
-		A10000000000000000000014 /* timerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = timerState.swift; sourceTree = "<group>"; };
 		A10000000000000000000015 /* appSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = appSettings.swift; sourceTree = "<group>"; };
 		A10000000000000000000016 /* earningsCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = earningsCalculator.swift; sourceTree = "<group>"; };
 		A10000000000000000000017 /* stateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = stateStore.swift; sourceTree = "<group>"; };
@@ -85,7 +83,6 @@
 				A10000000000000000000011 /* idea8ProgressApp.swift */,
 				A10000000000000000000012 /* settingsPanel.swift */,
 				A10000000000000000000013 /* workSchedule.swift */,
-				A10000000000000000000014 /* timerState.swift */,
 				A10000000000000000000015 /* appSettings.swift */,
 				A10000000000000000000016 /* earningsCalculator.swift */,
 				A10000000000000000000017 /* stateStore.swift */,
@@ -211,7 +208,6 @@
 				A10000000000000000000031 /* idea8ProgressApp.swift in Sources */,
 				A10000000000000000000032 /* settingsPanel.swift in Sources */,
 				A10000000000000000000033 /* workSchedule.swift in Sources */,
-				A10000000000000000000034 /* timerState.swift in Sources */,
 				A10000000000000000000035 /* appSettings.swift in Sources */,
 				A10000000000000000000036 /* earningsCalculator.swift in Sources */,
 				A10000000000000000000037 /* stateStore.swift in Sources */,

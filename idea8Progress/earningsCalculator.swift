@@ -5,28 +5,26 @@ struct EarningsInput {
     var now: Date
     var calendar: Calendar
     var settings: AppSettings
-    var timer: TimerState
 }
 
 /// 面板上四个指标所需的快照。
 struct EarningsSnapshot: Equatable {
     var now: Date
     var todayEarned: Decimal
-    /// 此刻真正在往上跳的速度。计时关闭，或不在带薪时段时为 0。
+    /// 此刻真正在往上跳的速度。不在带薪时段时为 0。
     var earnRatePerHour: Decimal
-    /// 月薪按本月工作日和每日净工时折算出的时薪，与计时开关无关。
+    /// 月薪按本月工作日和每日净工时折算出的时薪。
     var contractedHourlyRate: Decimal
-    /// 今天「计时开启 ∩ 带薪窗口」的秒数。
+    /// 今天从带薪窗口开始到此刻、已经走过的带薪秒数。不含午休、班次外和非工作日。
     var workedSeconds: TimeInterval
     /// 一个满勤日的净带薪秒数。默认 8.5 小时。
     var scheduledNetSeconds: TimeInterval
     var fullDayEarnings: Decimal
     var monthEarned: Decimal
-    /// 本月今天之前、按排班应出勤的天数。这些天按满勤计入，不看当天有没有开过计时器。
+    /// 本月今天之前、按排班应出勤的天数。这些天按满勤计入。
     var pastWorkdayCount: Int
     /// 本月全部应出勤天数，用来把月薪摊成日薪/时薪。含今天和尚未到来的工作日。
     var workdayCountInMonth: Int
-    var timerRunning: Bool
     var isEarningNow: Bool
 
     var progress: Double {
@@ -49,16 +47,11 @@ enum EarningsCalculator {
             workdayCount: workdayCount,
             netSeconds: netSeconds
         )
-        let worked = workedPaidSeconds(
-            now: now,
-            timer: input.timer,
-            schedule: schedule,
-            calendar: calendar
-        )
+        let worked = elapsedPaidSeconds(now: now, schedule: schedule, calendar: calendar)
         let fullDay = earnings(seconds: netSeconds, ratePerHour: ratePerHour)
         let today = earnings(seconds: worked, ratePerHour: ratePerHour)
         let month = fullDay * Decimal(pastCount) + today
-        let earningNow = input.timer.isRunning && isInstantPaid(now: now, schedule: schedule, calendar: calendar)
+        let earningNow = isInstantPaid(now: now, schedule: schedule, calendar: calendar)
 
         return EarningsSnapshot(
             now: now,
@@ -71,7 +64,6 @@ enum EarningsCalculator {
             monthEarned: month,
             pastWorkdayCount: pastCount,
             workdayCountInMonth: workdayCount,
-            timerRunning: input.timer.isRunning,
             isEarningNow: earningNow
         )
     }
@@ -99,22 +91,15 @@ enum EarningsCalculator {
         }
     }
 
-    /// 把计时区间裁到「今天」再与带薪窗口求交。昨天的区间如果还开着，只计今天午夜之后的带薪部分。
-    static func workedPaidSeconds(
+    /// 今天已经发生的带薪秒数：从当天零点到 `now`，与带薪窗口求交。
+    /// 上班前为 0，午休只保留上午那段，下班后停在满勤，非工作日为 0。
+    static func elapsedPaidSeconds(
         now: Date,
-        timer: TimerState,
         schedule: WorkSchedule,
         calendar: Calendar
     ) -> TimeInterval {
         let today = calendar.startOfDay(for: now)
-        var total: TimeInterval = 0
-        for segment in timer.segments {
-            let segmentEnd = min(segment.end ?? now, now)
-            let from = max(segment.start, today)
-            guard segmentEnd > from else { continue }
-            total += paidSeconds(from: from, to: segmentEnd, schedule: schedule, calendar: calendar)
-        }
-        return max(0, total)
+        return paidSeconds(from: today, to: now, schedule: schedule, calendar: calendar)
     }
 
     static func paidSeconds(
@@ -148,7 +133,7 @@ enum EarningsCalculator {
         return count
     }
 
-    /// 本月内、严格早于今天的工作日数量。今天即使是工作日也不算满勤，只算计时累计。
+    /// 本月内、严格早于今天的工作日数量。今天即使是工作日也不算满勤，只算到此刻已经走过的带薪时间。
     static func pastWorkdayCount(before date: Date, schedule: WorkSchedule, calendar: Calendar) -> Int {
         let today = calendar.startOfDay(for: date)
         guard let interval = calendar.dateInterval(of: .month, for: date) else { return 0 }

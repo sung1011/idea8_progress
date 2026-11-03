@@ -94,18 +94,12 @@ struct MenuBarPanel: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("计时关闭时不累计。午休、非上班时段、未勾选的星期也不计入。已过工作日按满勤补进本月。")
+            Text("按排班自动累计：从上班到现在，扣除午休。非上班时段和未勾选的星期不计入。已过工作日按满勤补进本月。")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack {
-                Button(model.timer.isRunning ? "停止计时" : "开始计时") {
-                    model.toggleTimer()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(model.timer.isRunning ? Color.red : Color.green)
-
                 Spacer()
 
                 Button("设置") {
@@ -126,19 +120,11 @@ struct MenuBarPanel: View {
     }
 
     private var statusText: String {
-        if !model.snapshot.timerRunning {
-            return "未计时"
-        }
-        if model.snapshot.isEarningNow {
-            return "计时中"
-        }
-        return "计时中 · 当前不计入收入"
+        model.snapshot.isEarningNow ? "正在入账" : "当前不计入收入"
     }
 
     private var statusColor: Color {
-        if model.snapshot.isEarningNow { return .green }
-        if model.snapshot.timerRunning { return .orange }
-        return .secondary
+        model.snapshot.isEarningNow ? .green : .secondary
     }
 
     private var rateCaption: String {
