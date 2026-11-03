@@ -29,6 +29,10 @@ enum EarningsChecks {
             ("月末满勤加今天刚好等于月薪", runner.fullMonthMatchesSalary),
             ("月薪按本月工作日和净工时折算", runner.monthlyProrationMatchesHour),
             ("改月薪会改速度", runner.changingMonthlySalaryChangesEarnRate),
+            ("年薪先除以 12 再按自然月计算", runner.annualSalaryDividesIntoTheSameMonth),
+            ("月薪模式不看年薪", runner.monthlyModeIgnoresAnnualSalary),
+            ("月薪和年薪以及模式会一起保存", runner.salaryAmountsAndModePersist),
+            ("认不出的薪资模式仍按月薪", runner.unknownSalaryModeStaysMonthly),
             ("没有工作日或净工时为 0 时不崩溃", runner.zeroScheduleDoesNotCrash),
             ("只勾选周一会改变分母", runner.mondayOnlyChangesProration),
             ("今天从上班重新计，不把昨天尾段算进来", runner.todayStartsAtScheduledWindow),
@@ -276,6 +280,98 @@ private struct Runner {
         try expectDecimal(high.contractedHourlyRate, 200, "折算时薪跟着月薪走")
     }
 
+    func annualSalaryDividesIntoTheSameMonth() throws {
+        let during = try makeDate(2026, 11, 3, 15, 0)
+        let fromMonthly = snapshot(now: during, settings: monthly(17_850))
+        let fromAnnual = snapshot(now: during, settings: annual(214_200))
+        try expectDecimal(fromAnnual.contractedHourlyRate, fromMonthly.contractedHourlyRate, "214200 ÷ 12 等于月薪 17850")
+        try expectDecimal(fromAnnual.todayEarned, fromMonthly.todayEarned, "今日已赚走同一套月度折算")
+        try expectDecimal(fromAnnual.monthEarned, fromMonthly.monthEarned, "本月累计走同一套月度折算")
+        try expectDecimal(fromAnnual.fullDayEarnings, fromMonthly.fullDayEarnings, "日满勤走同一套月度折算")
+        try expectDecimal(fromAnnual.earnRatePerHour, fromMonthly.earnRatePerHour, "速度走同一套月度折算")
+        try expectEqual(fromAnnual.workedSeconds, fromMonthly.workedSeconds, "工时仍按当天排班")
+        try expectEqual(fromAnnual.pastWorkdayCount, fromMonthly.pastWorkdayCount, "已过工作日不变")
+        try expectEqual(fromAnnual.workdayCountInMonth, 21, "分母仍是 2026-11 的工作日")
+
+        let done = snapshot(now: try makeDate(2026, 11, 30, 20, 30), settings: annual(214_200))
+        try expectDecimal(done.monthEarned, 17_850, "月末满勤等于年薪的十二分之一，不是整年")
+        try expectEqual(done.workdayCountInMonth, 21, "统计范围仍是当前自然月")
+
+        var uneven = AppSettings.default
+        uneven.salaryMode = .annual
+        uneven.annualSalary = 1
+        try expectDecimal(uneven.effectiveMonthlySalary, Decimal(1) / 12, "年薪按 12 个月折算")
+        let zero = snapshot(now: during, settings: annual(0))
+        try expectDecimal(zero.contractedHourlyRate, 0, "年薪为 0 时不摊销")
+        try expectDecimal(zero.monthEarned, 0, "年薪为 0 时本月没有收入")
+    }
+
+    func monthlyModeIgnoresAnnualSalary() throws {
+        var settings = monthly(17_850)
+        settings.annualSalary = 999_999
+        let snap = snapshot(now: try makeDate(2026, 11, 3, 11, 0), settings: settings)
+        try expectEqual(settings.salaryMode, .monthly, "默认按月薪输入")
+        try expectDecimal(snap.contractedHourlyRate, 100, "月薪模式只用月薪")
+        try expectDecimal(snap.todayEarned, 100, "今日已赚不看年薪")
+        try expectDecimal(snap.monthEarned, 950, "本月累计不看年薪")
+    }
+
+    func salaryAmountsAndModePersist() throws {
+        let suite = "idea8Progress.tests.\(UUID().uuidString)"
+        let defaults = try makeDefaults(suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let during = try makeDate(2026, 11, 3, 11, 0)
+        let retirement = RetirementDate(year: 2031, month: 5, day: 1)
+        let model = EarningsModel(defaults: defaults, calendar: calendar, now: during, startTicker: false)
+        model.setMonthlySalary(17_850, now: during)
+        model.setAnnualSalary(214_200, now: during)
+        model.setRetirementDate(retirement, now: during)
+        try expectEqual(model.settings.salaryMode, .monthly, "还没切换时按月薪")
+        try expectDecimal(model.snapshot.contractedHourlyRate, 100, "月薪 17850 的速度")
+
+        model.setSalaryMode(.annual, now: during)
+        try expectDecimal(model.settings.monthlySalary, 17_850, "切到年薪不改已存的月薪")
+        try expectDecimal(model.settings.annualSalary, 214_200, "年薪仍是刚才填写的")
+        try expectEqual(model.settings.retirementDate, retirement, "切换年薪不改退休日")
+        try expectDecimal(model.snapshot.contractedHourlyRate, 100, "年薪 ÷ 12 后速度不变")
+        try expectEqual(model.snapshot.workdayCountInMonth, 21, "面板仍按本月工作日")
+
+        let monthEnd = try makeDate(2026, 11, 30, 20, 30)
+        model.tick(now: monthEnd)
+        try expectDecimal(model.snapshot.monthEarned, 17_850, "自然月末满勤等于年薪的十二分之一")
+
+        model.setSalaryMode(.monthly, now: monthEnd)
+        model.setAnnualSalary(-8, now: monthEnd)
+        try expectDecimal(model.settings.annualSalary, 0, "负数年薪被清掉")
+        try expectDecimal(model.snapshot.monthEarned, 17_850, "切回月薪后仍用月薪")
+        try expectEqual(model.settings.retirementDate, retirement, "改年薪不改退休日")
+
+        let loaded = StateStore.load(defaults: defaults)
+        try expectEqual(loaded.settings.salaryMode, .monthly, "模式写入 UserDefaults")
+        try expectDecimal(loaded.settings.monthlySalary, 17_850, "月薪写入 UserDefaults")
+        try expectDecimal(loaded.settings.annualSalary, 0, "年薪写入 UserDefaults")
+        try expectEqual(loaded.settings.retirementDate, retirement, "退休日仍在同一份存档里")
+    }
+
+    func unknownSalaryModeStaysMonthly() throws {
+        let suite = "idea8Progress.tests.\(UUID().uuidString)"
+        let defaults = try makeDefaults(suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let json = """
+        {"settings":{"salaryMode":"hourly","monthlySalary":"17850","annualSalary":"10","schedule":{"workdays":[2,3,4,5,6],"workStartMinutes":600,"workEndMinutes":1230,"lunchStartMinutes":720,"lunchEndMinutes":840}}}
+        """
+        defaults.set(Data(json.utf8), forKey: StateStore.storageKey)
+        let loaded = StateStore.load(defaults: defaults)
+        try expectEqual(loaded.settings.salaryMode, .monthly, "认不出的模式按月薪")
+        try expectDecimal(loaded.settings.monthlySalary, 17_850, "月薪还在")
+        try expectDecimal(loaded.settings.annualSalary, 10, "年薪还在")
+        try expectEqual(loaded.settings.retirementDate == nil, true, "没写退休日时仍是空")
+        let snap = snapshot(now: try makeDate(2026, 11, 3, 11, 0), settings: loaded.settings)
+        try expectDecimal(snap.contractedHourlyRate, 100, "仍按月薪折算")
+    }
+
     func zeroScheduleDoesNotCrash() throws {
         var noDays = WorkSchedule.default
         noDays.workdays = []
@@ -331,7 +427,9 @@ private struct Runner {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         var settings = AppSettings.default
+        settings.salaryMode = .annual
         settings.monthlySalary = Decimal(string: "12345.67")!
+        settings.annualSalary = Decimal(string: "99999.01")!
         var schedule = settings.schedule
         schedule.workdays.insert(9)
         schedule.workdays.remove(2)
@@ -339,14 +437,19 @@ private struct Runner {
 
         StateStore.save(PersistedState(settings: settings), defaults: defaults)
         let loaded = StateStore.load(defaults: defaults)
+        try expectEqual(loaded.settings.salaryMode, .annual, "薪资模式往返")
         try expectDecimal(loaded.settings.monthlySalary, Decimal(string: "12345.67")!, "月薪按十进制往返")
+        try expectDecimal(loaded.settings.annualSalary, Decimal(string: "99999.01")!, "年薪按十进制往返")
         try expectEqual(loaded.settings.schedule.workdays.contains(9), false, "非法星期被丢掉")
         try expectEqual(loaded.settings.schedule.workdays.contains(2), false, "取消的周一还在")
 
         settings.monthlySalary = -20
+        settings.annualSalary = -5
         StateStore.save(PersistedState(settings: settings), defaults: defaults)
         let sanitized = StateStore.load(defaults: defaults)
         try expectDecimal(sanitized.settings.monthlySalary, 0, "负数月薪被清掉")
+        try expectDecimal(sanitized.settings.annualSalary, 0, "负数年薪被清掉")
+        try expectEqual(sanitized.settings.salaryMode, .annual, "清掉负数时保留模式")
 
         let saved = defaults.data(forKey: StateStore.storageKey) ?? Data()
         let text = String(decoding: saved, as: UTF8.self)
@@ -387,7 +490,9 @@ private struct Runner {
         """
         defaults.set(Data(json.utf8), forKey: StateStore.storageKey)
         let loaded = StateStore.load(defaults: defaults)
+        try expectEqual(loaded.settings.salaryMode, .monthly, "旧的时薪计薪方式不会改成按年薪输入")
         try expectDecimal(loaded.settings.monthlySalary, 17_850, "仍读取月薪")
+        try expectDecimal(loaded.settings.annualSalary, 214_200, "没有年薪时按月薪 × 12 补齐")
         try expectEqual(loaded.settings.schedule, WorkSchedule.default, "排班还在")
         try expectEqual(loaded.settings.retirementDate == nil, true, "旧存档没有退休日")
 
@@ -550,7 +655,16 @@ private struct Runner {
 
     private func monthly(_ salary: Decimal) -> AppSettings {
         var settings = AppSettings.default
+        settings.salaryMode = .monthly
         settings.monthlySalary = salary
+        return settings
+    }
+
+    private func annual(_ salary: Decimal) -> AppSettings {
+        var settings = AppSettings.default
+        settings.salaryMode = .annual
+        settings.annualSalary = salary
+        settings.monthlySalary = 1
         return settings
     }
 

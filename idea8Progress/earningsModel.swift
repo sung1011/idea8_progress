@@ -41,8 +41,18 @@ final class EarningsModel: ObservableObject {
         publish(now: now)
     }
 
+    func setSalaryMode(_ mode: SalaryMode, now: Date = Date()) {
+        settings.salaryMode = mode
+        commitSettings(now: now)
+    }
+
     func setMonthlySalary(_ value: Decimal, now: Date = Date()) {
         settings.monthlySalary = value < 0 ? 0 : value
+        commitSettings(now: now)
+    }
+
+    func setAnnualSalary(_ value: Decimal, now: Date = Date()) {
+        settings.annualSalary = value < 0 ? 0 : value
         commitSettings(now: now)
     }
 

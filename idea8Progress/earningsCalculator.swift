@@ -42,8 +42,9 @@ enum EarningsCalculator {
         let netSeconds = schedule.netPaidSeconds
         let workdayCount = workdayCount(inMonthOf: now, schedule: schedule, calendar: calendar)
         let pastCount = pastWorkdayCount(before: now, schedule: schedule, calendar: calendar)
+        // 年薪已在 effectiveMonthlySalary 中除以 12。此处仍只按当前自然月摊销。
         let ratePerHour = effectiveHourlyRate(
-            monthlySalary: settings.monthlySalary,
+            monthlySalary: settings.effectiveMonthlySalary,
             workdayCount: workdayCount,
             netSeconds: netSeconds
         )

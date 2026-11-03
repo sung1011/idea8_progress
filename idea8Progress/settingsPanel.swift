@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// 月薪、排班、全局快捷键和退休日。从主面板的「设置」进入，不放在主界面上。
+/// 月薪或年薪、排班、全局快捷键和退休日。从主面板的「设置」进入，不放在主界面上。
 struct SettingsPanel: View {
     @ObservedObject var model: EarningsModel
     var onDone: () -> Void
@@ -9,6 +9,7 @@ struct SettingsPanel: View {
     @ObservedObject private var hotKeys = GlobalHotKeyCenter.shared
     @State private var settingsTab: PanelTab = .work
     @State private var monthlyText: String
+    @State private var annualText: String
     @State private var expandedTime: TimeEditor? = nil
     @State private var retirementYear: Int
     @State private var retirementMonth: Int
@@ -19,6 +20,7 @@ struct SettingsPanel: View {
         self.onDone = onDone
         _hotKeys = ObservedObject(wrappedValue: GlobalHotKeyCenter.shared)
         _monthlyText = State(initialValue: MoneyFormat.editable(model.settings.monthlySalary))
+        _annualText = State(initialValue: MoneyFormat.editable(model.settings.annualSalary))
         let date = model.settings.retirementDate?.validated()
         _retirementYear = State(initialValue: date?.year ?? 0)
         _retirementMonth = State(initialValue: date?.month ?? 0)
@@ -131,10 +133,11 @@ struct SettingsPanel: View {
 
     private var salaryField: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("月薪（元）")
+            salaryModeToggle
+            Text(amountTitle)
                 .font(.system(size: 15))
                 .foregroundStyle(.primary)
-            TextField("0", text: monthlyBinding)
+            TextField("0", text: amountBinding)
                 .textFieldStyle(.plain)
                 .font(.system(size: 22))
                 .monospacedDigit()
@@ -148,7 +151,52 @@ struct SettingsPanel: View {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .strokeBorder(Color.primary.opacity(0.16), lineWidth: 1)
                 )
+                .accessibilityLabel(amountTitle)
+                .id(model.settings.salaryMode)
+            if model.settings.salaryMode == .annual {
+                Text("折合月薪 \(MoneyFormat.currency(model.settings.effectiveMonthlySalary))，按自然月计算")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+    }
+
+    private var amountTitle: String {
+        model.settings.salaryMode == .annual ? "年薪（元）" : "月薪（元）"
+    }
+
+    private var salaryModeToggle: some View {
+        HStack(spacing: 6) {
+            salaryModeChip(.monthly, title: "月薪")
+            salaryModeChip(.annual, title: "年薪")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("薪资输入")
+    }
+
+    private func salaryModeChip(_ mode: SalaryMode, title: String) -> some View {
+        let selected = model.settings.salaryMode == mode
+        return Button {
+            model.setSalaryMode(mode)
+        } label: {
+            Text(title)
+                .font(.system(size: 14, weight: selected ? .semibold : .regular))
+                .foregroundStyle(selected ? Color.blue : Color.secondary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 34)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(selected ? Color.blue.opacity(0.16) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(selected ? Color.clear : Color.primary.opacity(0.16), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var weekdaySection: some View {
@@ -400,13 +448,20 @@ struct SettingsPanel: View {
         return String(format: "%d:%02d", value / 60, value % 60)
     }
 
-    private var monthlyBinding: Binding<String> {
+    private var amountBinding: Binding<String> {
         Binding(
-            get: { monthlyText },
+            get: { model.settings.salaryMode == .annual ? annualText : monthlyText },
             set: { newValue in
-                monthlyText = newValue
-                if let value = MoneyFormat.parse(newValue) {
-                    model.setMonthlySalary(value)
+                if model.settings.salaryMode == .annual {
+                    annualText = newValue
+                    if let value = MoneyFormat.parse(newValue) {
+                        model.setAnnualSalary(value)
+                    }
+                } else {
+                    monthlyText = newValue
+                    if let value = MoneyFormat.parse(newValue) {
+                        model.setMonthlySalary(value)
+                    }
                 }
             }
         )
