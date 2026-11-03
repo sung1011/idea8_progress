@@ -36,6 +36,9 @@ enum EarningsChecks {
             ("固定状态单独保存", runner.panelPinPreferenceRoundTrip),
             ("旧存档里的计时和时薪不再参与计算", runner.legacyArchiveDropsTimerAndHourlyRate),
             ("损坏的存档回退到默认值", runner.corruptStoreFallsBack),
+            ("退休日按自然日计算", runner.retirementCountdownUsesCalendarDays),
+            ("退休日期可以保存再读出", runner.retirementDateRoundTrip),
+            ("坏的退休日字段不丢掉月薪", runner.malformedRetirementDateDoesNotWipeSalary),
             ("金额输入解析", runner.moneyParsing)
         ]
 
@@ -349,6 +352,8 @@ private struct Runner {
         let text = String(decoding: saved, as: UTF8.self)
         try expectEqual(text.contains("timer"), false, "新存档不写计时")
         try expectEqual(text.contains("segments"), false, "新存档不写区间")
+        try expectEqual(loaded.settings.retirementDate == nil, true, "没填退休日时读出来仍是空")
+        try expectEqual(text.contains("retirementDate"), false, "没设置时不写退休日")
     }
 
     func panelPinPreferenceRoundTrip() throws {
@@ -384,6 +389,7 @@ private struct Runner {
         let loaded = StateStore.load(defaults: defaults)
         try expectDecimal(loaded.settings.monthlySalary, 17_850, "仍读取月薪")
         try expectEqual(loaded.settings.schedule, WorkSchedule.default, "排班还在")
+        try expectEqual(loaded.settings.retirementDate == nil, true, "旧存档没有退休日")
 
         let snap = snapshot(now: try makeDate(2026, 11, 3, 15, 0), settings: loaded.settings)
         try expectDecimal(snap.contractedHourlyRate, 100, "忽略旧时薪，按月薪折算")
@@ -406,6 +412,128 @@ private struct Runner {
         defaults.set(Data("not-json".utf8), forKey: StateStore.storageKey)
         let loaded = StateStore.load(defaults: defaults)
         try expectEqual(loaded.settings, AppSettings.default, "坏数据回到默认设置")
+    }
+
+    func retirementCountdownUsesCalendarDays() throws {
+        try expectEqual(AppSettings.default.retirementDate == nil, true, "默认不填退休日")
+        try expectEqual(
+            RetirementDate.calendarDays(from: try makeDate(2026, 11, 3, 15, 0), until: nil, calendar: calendar) == nil,
+            true,
+            "没设置时不算天数"
+        )
+        try expectEqual(RetirementDate.panelSentence(days: 0), "距离退休还有 0 天", "当天")
+        try expectEqual(RetirementDate.panelSentence(days: 12), "距离退休还有 12 天", "未来")
+        try expectEqual(RetirementDate.panelSentence(days: -3), "退休日已过 3 天", "已过")
+        try expectEqual(RetirementDate.unsetPrompt.contains("设置"), true, "空日期要提示去设置")
+
+        let late = try makeDate(2026, 11, 3, 23, 59)
+        try expectEqual(
+            RetirementDate.calendarDays(from: late, until: RetirementDate(year: 2026, month: 11, day: 3), calendar: calendar),
+            0,
+            "同一自然日的深夜仍是 0 天"
+        )
+        try expectEqual(
+            RetirementDate.calendarDays(from: late, until: RetirementDate(year: 2026, month: 11, day: 4), calendar: calendar),
+            1,
+            "过了午夜前仍按日历算到明天是 1 天"
+        )
+        try expectEqual(
+            RetirementDate.calendarDays(from: try makeDate(2026, 11, 3, 0, 1), until: RetirementDate(year: 2026, month: 11, day: 1), calendar: calendar),
+            -2,
+            "退休日在两天前"
+        )
+        try expectEqual(
+            RetirementDate.calendarDays(from: try makeDate(2026, 12, 31, 22, 0), until: RetirementDate(year: 2027, month: 1, day: 1), calendar: calendar),
+            1,
+            "跨年只差 1 个自然日"
+        )
+        try expectEqual(
+            RetirementDate.calendarDays(from: try makeDate(2024, 2, 28, 23, 59), until: RetirementDate(year: 2024, month: 3, day: 1), calendar: calendar),
+            2,
+            "闰年 2 月 28 日到 3 月 1 日隔着 29 日"
+        )
+        try expectEqual(
+            RetirementDate.calendarDays(from: try makeDate(2023, 2, 28, 8, 0), until: RetirementDate(year: 2023, month: 3, day: 1), calendar: calendar),
+            1,
+            "平年 2 月 28 日到 3 月 1 日只差 1 天"
+        )
+        try expectEqual(
+            RetirementDate.calendarDays(from: try makeDate(2026, 11, 6, 18, 0), until: RetirementDate(year: 2026, month: 11, day: 9), calendar: calendar),
+            3,
+            "周五到周一是 3 个自然日，不是工作日"
+        )
+
+        try expectEqual(RetirementDate(year: 2024, month: 2, day: 29).validated() != nil, true, "闰日有效")
+        try expectEqual(RetirementDate(year: 2023, month: 2, day: 29).validated() == nil, true, "平年 2 月 29 日无效")
+        try expectEqual(RetirementDate(year: 2026, month: 2, day: 31).validated() == nil, true, "2 月 31 日无效")
+        try expectEqual(RetirementDate.dayCount(year: 2024, month: 2), 29, "2024 年 2 月 29 天")
+        try expectEqual(RetirementDate.dayCount(year: 2023, month: 2), 28, "2023 年 2 月 28 天")
+        try expectEqual(RetirementDate.dayCount(year: 2026, month: 11), 30, "11 月 30 天")
+        try expectEqual(RetirementDate.dayCount(year: 2026, month: 13) == nil, true, "没有 13 月")
+    }
+
+    func retirementDateRoundTrip() throws {
+        let suite = "idea8Progress.tests.\(UUID().uuidString)"
+        let defaults = try makeDefaults(suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let now = try makeDate(2026, 11, 3, 15, 0)
+        let model = EarningsModel(defaults: defaults, calendar: calendar, now: now, startTicker: false)
+        try expectEqual(model.settings.retirementDate == nil, true, "新存档没有退休日")
+        let before = model.snapshot
+
+        let date = RetirementDate(year: 2035, month: 6, day: 1)
+        model.setRetirementDate(date, now: now)
+        try expectEqual(model.settings.retirementDate, date, "模型记下退休日")
+        try expectDecimal(model.snapshot.todayEarned, before.todayEarned, "设置退休日不改变今日已赚")
+        try expectDecimal(model.snapshot.earnRatePerHour, before.earnRatePerHour, "设置退休日不改变速度")
+        try expectEqual(model.snapshot.workedSeconds, before.workedSeconds, "设置退休日不改变工时")
+        try expectDecimal(model.snapshot.monthEarned, before.monthEarned, "设置退休日不改变本月累计")
+        try expectEqual(model.snapshot.isEarningNow, before.isEarningNow, "设置退休日不改变是否入账")
+
+        let loaded = StateStore.load(defaults: defaults)
+        try expectEqual(loaded.settings.retirementDate, date, "UserDefaults 里能读回退休日")
+        try expectEqual(loaded.settings.schedule, WorkSchedule.default, "排班没被退休日改掉")
+        try expectDecimal(loaded.settings.monthlySalary, 15_000, "月薪没被退休日改掉")
+        try expectEqual(
+            RetirementDate.calendarDays(from: now, until: loaded.settings.retirementDate, calendar: calendar),
+            3132,
+            "2026-11-03 到 2035-06-01 的自然日"
+        )
+
+        model.setRetirementDate(RetirementDate(year: 2023, month: 2, day: 29), now: now)
+        try expectEqual(model.settings.retirementDate == nil, true, "平年 2 月 29 日不保存")
+
+        let leapDay = RetirementDate(year: 2024, month: 2, day: 29)
+        model.setRetirementDate(leapDay, now: now)
+        try expectEqual(StateStore.load(defaults: defaults).settings.retirementDate, leapDay, "闰日可以保存")
+
+        var invalid = AppSettings.default
+        invalid.retirementDate = RetirementDate(year: 2026, month: 2, day: 31)
+        StateStore.save(PersistedState(settings: invalid), defaults: defaults)
+        try expectEqual(StateStore.load(defaults: defaults).settings.retirementDate == nil, true, "非法日期在保存时丢掉")
+
+        model.setRetirementDate(nil, now: now)
+        let cleared = defaults.data(forKey: StateStore.storageKey) ?? Data()
+        let text = String(decoding: cleared, as: UTF8.self)
+        try expectEqual(StateStore.load(defaults: defaults).settings.retirementDate == nil, true, "清除后存档为空")
+        try expectEqual(text.contains("retirementDate"), false, "清除后不再写入退休日字段")
+        try expectDecimal(model.snapshot.todayEarned, before.todayEarned, "清除退休日也不改变收入")
+    }
+
+    func malformedRetirementDateDoesNotWipeSalary() throws {
+        let suite = "idea8Progress.tests.\(UUID().uuidString)"
+        let defaults = try makeDefaults(suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let json = """
+        {"settings":{"monthlySalary":"17850","schedule":{"workdays":[2,3,4,5,6],"workStartMinutes":600,"workEndMinutes":1230,"lunchStartMinutes":720,"lunchEndMinutes":840},"retirementDate":"soon"}}
+        """
+        defaults.set(Data(json.utf8), forKey: StateStore.storageKey)
+        let loaded = StateStore.load(defaults: defaults)
+        try expectDecimal(loaded.settings.monthlySalary, 17_850, "坏的退休日字段不丢掉月薪")
+        try expectEqual(loaded.settings.schedule, WorkSchedule.default, "排班还在")
+        try expectEqual(loaded.settings.retirementDate == nil, true, "坏的退休日当成没设置")
     }
 
     func moneyParsing() throws {

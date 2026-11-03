@@ -51,6 +51,11 @@ final class EarningsModel: ObservableObject {
         commitSettings(now: now)
     }
 
+    func setRetirementDate(_ date: RetirementDate?, now: Date = Date()) {
+        settings.retirementDate = date?.validated()
+        commitSettings(now: now)
+    }
+
     func toggleWeekday(_ weekday: Int, now: Date = Date()) {
         guard (1...7).contains(weekday) else { return }
         var schedule = settings.schedule

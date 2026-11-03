@@ -6,6 +6,7 @@ struct MenuBarPanel: View {
     @ObservedObject var pins: PanelPinController
 
     @State private var showingSettings = false
+    @State private var panelTab: PanelTab = .work
 
     var body: some View {
         Group {
@@ -31,8 +32,25 @@ struct MenuBarPanel: View {
             header
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-                .padding(.bottom, 12)
+                .padding(.bottom, 8)
+            PanelTabBar(selection: $panelTab)
+                .padding(.horizontal, 20)
             hairline
+            if panelTab == .work {
+                workMetrics
+            } else {
+                retirementSection
+            }
+            footer
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 16)
+        }
+        .frame(width: 336)
+    }
+
+    private var workMetrics: some View {
+        VStack(alignment: .leading, spacing: 0) {
             hero
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
@@ -51,12 +69,47 @@ struct MenuBarPanel: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 4)
-            footer
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
         }
-        .frame(width: 336)
+    }
+
+    private var retirementSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let days = retirementDays, let date = model.settings.retirementDate {
+                Text(RetirementDate.panelSentence(days: days))
+                    .font(.system(size: 28, weight: .heavy))
+                    .foregroundStyle(.primary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                Text(date.displayText)
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Text("按自然日计算，不按工作日。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("还没有退休日期")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(.primary)
+                Text(RetirementDate.unsetPrompt)
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 22)
+        .padding(.bottom, 28)
+        .frame(maxWidth: .infinity, minHeight: 168, alignment: .topLeading)
+    }
+
+    private var retirementDays: Int? {
+        RetirementDate.calendarDays(
+            from: model.snapshot.now,
+            until: model.settings.retirementDate,
+            calendar: model.calendar
+        )
     }
 
     private var header: some View {

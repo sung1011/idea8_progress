@@ -22,6 +22,8 @@
 		A10000000000000000000047 /* hotKeyShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000023 /* hotKeyShortcut.swift */; };
 		A10000000000000000000048 /* globalHotKeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000024 /* globalHotKeyCenter.swift */; };
 		A1000000000000000000004A /* hotKeyChecks.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000026 /* hotKeyChecks.swift */; };
+		A1000000000000000000004B /* retirementDate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000027 /* retirementDate.swift */; };
+		A1000000000000000000004C /* panelTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000028 /* panelTab.swift */; };
 		A1000000000000000000003C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001C /* Assets.xcassets */; };
 		A1000000000000000000003D /* earningsChecks.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001F /* earningsChecks.swift */; };
 		A1000000000000000000003E /* earningsCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* earningsCalculatorTests.swift */; };
@@ -53,6 +55,8 @@
 		A10000000000000000000023 /* hotKeyShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = hotKeyShortcut.swift; sourceTree = "<group>"; };
 		A10000000000000000000024 /* globalHotKeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = globalHotKeyCenter.swift; sourceTree = "<group>"; };
 		A10000000000000000000026 /* hotKeyChecks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = hotKeyChecks.swift; sourceTree = "<group>"; };
+		A10000000000000000000027 /* retirementDate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = retirementDate.swift; sourceTree = "<group>"; };
+		A10000000000000000000028 /* panelTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = panelTab.swift; sourceTree = "<group>"; };
 		A1000000000000000000001C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000000000000000000001D /* idea8Progress.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = idea8Progress.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000000000000000000001E /* idea8ProgressTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = idea8ProgressTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -104,6 +108,8 @@
 				A10000000000000000000022 /* pinnedPanel.swift */,
 				A10000000000000000000023 /* hotKeyShortcut.swift */,
 				A10000000000000000000024 /* globalHotKeyCenter.swift */,
+				A10000000000000000000028 /* panelTab.swift */,
+				A10000000000000000000027 /* retirementDate.swift */,
 				A1000000000000000000001C /* Assets.xcassets */,
 			);
 			path = idea8Progress;
@@ -234,6 +240,8 @@
 				A10000000000000000000040 /* pinnedPanel.swift in Sources */,
 				A10000000000000000000047 /* hotKeyShortcut.swift in Sources */,
 				A10000000000000000000048 /* globalHotKeyCenter.swift in Sources */,
+				A1000000000000000000004C /* panelTab.swift in Sources */,
+				A1000000000000000000004B /* retirementDate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

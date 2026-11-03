@@ -8,7 +8,7 @@ struct PersistedState: Codable, Equatable {
     }
 }
 
-/// 月薪和排班放在标准 UserDefaults 里，不访问网络。旧存档里的计时区间不再读取。
+/// 月薪、排班和退休日放在标准 UserDefaults 里，不访问网络。旧存档里的计时区间不再读取。退休日没设置时不写这个字段。
 enum StateStore {
     static let storageKey = "com.sung1011.idea8progress.state.v1"
 

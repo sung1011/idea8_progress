@@ -1,20 +1,28 @@
 import AppKit
 import SwiftUI
 
-/// 月薪和排班。从主面板的「设置」进入，不放在主界面上。
+/// 月薪、排班、全局快捷键和退休日。从主面板的「设置」进入，不放在主界面上。
 struct SettingsPanel: View {
     @ObservedObject var model: EarningsModel
     var onDone: () -> Void
 
     @ObservedObject private var hotKeys = GlobalHotKeyCenter.shared
+    @State private var settingsTab: PanelTab = .work
     @State private var monthlyText: String
     @State private var expandedTime: TimeEditor? = nil
+    @State private var retirementYear: Int
+    @State private var retirementMonth: Int
+    @State private var retirementDay: Int
 
     init(model: EarningsModel, onDone: @escaping () -> Void) {
         self.model = model
         self.onDone = onDone
         _hotKeys = ObservedObject(wrappedValue: GlobalHotKeyCenter.shared)
         _monthlyText = State(initialValue: MoneyFormat.editable(model.settings.monthlySalary))
+        let date = model.settings.retirementDate?.validated()
+        _retirementYear = State(initialValue: date?.year ?? 0)
+        _retirementMonth = State(initialValue: date?.month ?? 0)
+        _retirementDay = State(initialValue: date?.day ?? 0)
     }
 
     var body: some View {
@@ -23,18 +31,77 @@ struct SettingsPanel: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
                 .padding(.bottom, 6)
+            PanelTabBar(selection: settingsTabBinding)
+                .padding(.horizontal, 20)
+                .padding(.top, 4)
+            Divider()
+                .padding(.horizontal, 20)
+                .padding(.top, 2)
 
-            VStack(alignment: .leading, spacing: 22) {
-                salaryField
-                weekdaySection
-                scheduleSection
-                hotKeySection
+            if settingsTab == .work {
+                workSettings
+            } else {
+                retirementSettings
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 18)
-            .padding(.bottom, 22)
         }
         .frame(width: 336)
+    }
+
+    private var workSettings: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            salaryField
+            weekdaySection
+            scheduleSection
+            hotKeySection
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 22)
+    }
+
+    private var retirementSettings: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("退休日期")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.primary)
+                Text("按自然日计算还有多少天，不按工作日。年、月、日都选好才保存。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                dateMenu(title: "年", selection: retirementYearBinding, options: yearOptions, unit: "年")
+                Divider()
+                dateMenu(title: "月", selection: retirementMonthBinding, options: Array(1...12), unit: "月")
+                Divider()
+                dateMenu(title: "日", selection: retirementDayBinding, options: dayOptions, unit: "日")
+            }
+
+            if let date = model.settings.retirementDate {
+                Text("已保存 \(date.displayText)。主面板会显示距离退休还有多少天。")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("还没保存。选齐年、月、日之后，主面板才会显示倒计时。")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if hasRetirementDraft {
+                Button("清除日期", action: clearRetirementDate)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color.blue)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 22)
+        .frame(maxWidth: .infinity, minHeight: 220, alignment: .topLeading)
     }
 
     private var header: some View {
@@ -359,6 +426,118 @@ struct SettingsPanel: View {
 
     private var lunchEndBinding: Binding<Date> {
         minutesBinding(\.lunchEndMinutes)
+    }
+
+    private var yearOptions: [Int] {
+        var years = Array(RetirementDate.minimumYear...RetirementDate.maximumYear)
+        if retirementYear != 0, !years.contains(retirementYear) {
+            years.append(retirementYear)
+            years.sort()
+        }
+        return years
+    }
+
+    private var dayOptions: [Int] {
+        let count: Int
+        if retirementYear != 0,
+           retirementMonth != 0,
+           let days = RetirementDate.dayCount(year: retirementYear, month: retirementMonth) {
+            count = days
+        } else {
+            count = 31
+        }
+        return Array(1...count)
+    }
+
+    private var hasRetirementDraft: Bool {
+        retirementYear != 0 || retirementMonth != 0 || retirementDay != 0 || model.settings.retirementDate != nil
+    }
+
+    private var settingsTabBinding: Binding<PanelTab> {
+        Binding(
+            get: { settingsTab },
+            set: { newValue in
+                if newValue != .work {
+                    hotKeys.cancelRecording()
+                }
+                settingsTab = newValue
+            }
+        )
+    }
+
+    private var retirementYearBinding: Binding<Int> {
+        Binding(
+            get: { retirementYear },
+            set: { newValue in
+                retirementYear = newValue
+                commitRetirementDraft(year: newValue, month: retirementMonth, day: retirementDay)
+            }
+        )
+    }
+
+    private var retirementMonthBinding: Binding<Int> {
+        Binding(
+            get: { retirementMonth },
+            set: { newValue in
+                retirementMonth = newValue
+                commitRetirementDraft(year: retirementYear, month: newValue, day: retirementDay)
+            }
+        )
+    }
+
+    private var retirementDayBinding: Binding<Int> {
+        Binding(
+            get: { retirementDay },
+            set: { newValue in
+                retirementDay = newValue
+                commitRetirementDraft(year: retirementYear, month: retirementMonth, day: newValue)
+            }
+        )
+    }
+
+    private func dateMenu(title: String, selection: Binding<Int>, options: [Int], unit: String) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 15))
+                .foregroundStyle(.primary)
+            Spacer(minLength: 8)
+            Picker(title, selection: selection) {
+                Text("未选择").tag(0)
+                ForEach(options, id: \.self) { value in
+                    Text("\(value)\(unit)").tag(value)
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func commitRetirementDraft(year: Int, month: Int, day: Int) {
+        guard year != 0, month != 0, day != 0 else {
+            if model.settings.retirementDate != nil {
+                model.setRetirementDate(nil)
+            }
+            return
+        }
+        var resolvedDay = day
+        if let count = RetirementDate.dayCount(year: year, month: month), resolvedDay > count {
+            resolvedDay = count
+            retirementDay = count
+        }
+        guard let date = RetirementDate(year: year, month: month, day: resolvedDay).validated() else {
+            return
+        }
+        if model.settings.retirementDate != date {
+            model.setRetirementDate(date)
+        }
+    }
+
+    private func clearRetirementDate() {
+        retirementYear = 0
+        retirementMonth = 0
+        retirementDay = 0
+        model.setRetirementDate(nil)
     }
 
     private func minutesBinding(_ keyPath: WritableKeyPath<WorkSchedule, Int>) -> Binding<Date> {
