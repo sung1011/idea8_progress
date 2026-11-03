@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// 面板是否固定，以及固定后浮动窗口的位置。和计薪存档分开，避免搅进月薪计算。
+/// 没写过固定键时默认不钉，冷启动不恢复浮动窗。已经写入的 true / false 保留，读取时不改写。
 struct StoredPanelFrame: Equatable {
     var x: Double
     var y: Double
@@ -52,8 +53,15 @@ enum PanelPinStore {
     static let pinnedKey = "com.sung1011.idea8progress.panelPinned"
     static let frameKey = "com.sung1011.idea8progress.pinnedPanelFrame"
 
+    /// 键不存在时返回 false，并且不把这个默认写回去。
     static func loadPinned(defaults: UserDefaults = .standard) -> Bool {
-        defaults.bool(forKey: pinnedKey)
+        guard defaults.object(forKey: pinnedKey) != nil else { return false }
+        return defaults.bool(forKey: pinnedKey)
+    }
+
+    /// 冷启动是否自动打开固定浮动窗。只有用户已经钉住（键存在且为 true）才恢复。
+    static func shouldRestoreOnLaunch(defaults: UserDefaults = .standard) -> Bool {
+        loadPinned(defaults: defaults)
     }
 
     static func savePinned(_ pinned: Bool, defaults: UserDefaults) {

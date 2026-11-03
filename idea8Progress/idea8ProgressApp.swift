@@ -23,7 +23,7 @@ struct Idea8ProgressApp: App {
     }
 }
 
-/// 上次退出时如果面板是固定的，启动后直接打开浮动窗口。
+/// 只有 UserDefaults 里已经记下固定时，启动后才打开浮动窗口。没写过这个键则不弹出。
 final class AppLaunch: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         MenuBarStatusItemCapture.install()

@@ -9,7 +9,7 @@ enum SalaryMode: String, Codable, Equatable {
 /// 会写入 UserDefaults 的用户设置。金额用十进制字符串保存，避免浮点误差。
 /// 时薪不单独保存。年薪先折成有效月薪，再按本月工作日和每日净工时折算。
 /// 退休日默认为空，只有用户在设置里选定年月日之后才写入。
-/// `showMenuBarEarnings` 缺省为 true。旧存档没有这个字段时，菜单栏仍显示今日已赚。
+/// `showMenuBarEarnings` 默认关闭。旧存档缺这个字段时不显示金额；已经写入的 true / false 保留。
 struct AppSettings: Equatable {
     var salaryMode: SalaryMode
     var monthlySalary: Decimal
@@ -24,7 +24,7 @@ struct AppSettings: Equatable {
         annualSalary: 180_000,
         schedule: .default,
         retirementDate: nil,
-        showMenuBarEarnings: true
+        showMenuBarEarnings: false
     )
 
     /// 进入月度计算的金额。年薪模式为年薪 ÷ 12，月薪模式为填写的月薪。
@@ -73,7 +73,7 @@ extension AppSettings: Codable {
         }
         schedule = try container.decodeIfPresent(WorkSchedule.self, forKey: .schedule) ?? .default
         retirementDate = Self.decodeRetirementDate(container)
-        showMenuBarEarnings = try container.decodeIfPresent(Bool.self, forKey: .showMenuBarEarnings) ?? true
+        showMenuBarEarnings = Self.decodeShowMenuBarEarnings(container)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -84,6 +84,15 @@ extension AppSettings: Codable {
         try container.encode(schedule, forKey: .schedule)
         try container.encodeIfPresent(retirementDate, forKey: .retirementDate)
         try container.encode(showMenuBarEarnings, forKey: .showMenuBarEarnings)
+    }
+
+    /// 缺字段、null 或类型不对都用当前默认（不显示）。已经写入的 true / false 原样保留，避免坏字段把月薪一起丢掉。
+    private static func decodeShowMenuBarEarnings(_ container: KeyedDecodingContainer<CodingKeys>) -> Bool {
+        guard container.contains(.showMenuBarEarnings),
+              let value = try? container.decode(Bool.self, forKey: .showMenuBarEarnings) else {
+            return AppSettings.default.showMenuBarEarnings
+        }
+        return value
     }
 
     /// 缺字段、null 或类型不对都当成还没设置，避免坏字段把月薪和排班一起丢掉。

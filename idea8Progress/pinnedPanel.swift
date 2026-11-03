@@ -86,7 +86,7 @@ final class PanelPinController: NSObject, ObservableObject, NSWindowDelegate {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        self.isPinned = PanelPinStore.loadPinned(defaults: defaults)
+        self.isPinned = PanelPinStore.shouldRestoreOnLaunch(defaults: defaults)
         super.init()
         if defaults === UserDefaults.standard, Self.shared == nil {
             Self.shared = self
@@ -103,7 +103,9 @@ final class PanelPinController: NSObject, ObservableObject, NSWindowDelegate {
     func restoreIfNeeded() {
         guard !didRestore, model != nil else { return }
         didRestore = true
-        guard isPinned else { return }
+        let pinned = PanelPinStore.shouldRestoreOnLaunch(defaults: defaults)
+        isPinned = pinned
+        guard pinned else { return }
         DispatchQueue.main.async { [weak self] in
             self?.presentPinnedPanel(anchor: nil, reposition: true, focus: false)
         }
