@@ -2,11 +2,18 @@ import SwiftUI
 
 struct MenuBarLabel: View {
     var snapshot: EarningsSnapshot
+    var showEarnings: Bool
 
     var body: some View {
-        Label(
-            MoneyFormat.menuBar(snapshot.todayEarned),
-            systemImage: snapshot.isEarningNow ? "play.circle.fill" : "pause.circle"
-        )
+        if showEarnings {
+            Label(MoneyFormat.menuBar(snapshot.todayEarned), systemImage: symbolName)
+        } else {
+            Image(systemName: symbolName)
+                .accessibilityLabel("上班鼓励器")
+        }
+    }
+
+    private var symbolName: String {
+        snapshot.isEarningNow ? "play.circle.fill" : "pause.circle"
     }
 }

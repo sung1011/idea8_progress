@@ -43,7 +43,8 @@ enum EarningsChecks {
             ("退休日按自然日计算", runner.retirementCountdownUsesCalendarDays),
             ("退休日期可以保存再读出", runner.retirementDateRoundTrip),
             ("坏的退休日字段不丢掉月薪", runner.malformedRetirementDateDoesNotWipeSalary),
-            ("金额输入解析", runner.moneyParsing)
+            ("金额输入解析", runner.moneyParsing),
+            ("菜单栏金额到元且可关闭", runner.menuBarYuanAndVisibilitySetting)
         ]
 
         var failures: [String] = []
@@ -495,6 +496,7 @@ private struct Runner {
         try expectDecimal(loaded.settings.annualSalary, 214_200, "没有年薪时按月薪 × 12 补齐")
         try expectEqual(loaded.settings.schedule, WorkSchedule.default, "排班还在")
         try expectEqual(loaded.settings.retirementDate == nil, true, "旧存档没有退休日")
+        try expectEqual(loaded.settings.showMenuBarEarnings, true, "旧存档没有菜单栏开关时默认显示")
 
         let snap = snapshot(now: try makeDate(2026, 11, 3, 15, 0), settings: loaded.settings)
         try expectDecimal(snap.contractedHourlyRate, 100, "忽略旧时薪，按月薪折算")
@@ -648,9 +650,51 @@ private struct Runner {
         try expectDecimal(MoneyFormat.parse("  ") ?? -1, 0, "空白视为 0")
         try expectEqual(MoneyFormat.parse("abc") == nil, true, "无法解析")
         try expectEqual(MoneyFormat.currency(850), "¥850.00", "面板金额")
-        try expectEqual(MoneyFormat.menuBar(Decimal(string: "12.5")!), "¥12.50", "菜单栏金额")
+        try expectEqual(MoneyFormat.menuBar(Decimal(string: "12.5")!), "¥13", "菜单栏四舍五入到元")
+        try expectEqual(MoneyFormat.menuBar(Decimal(string: "12.49")!), "¥12", "不到五角舍去")
+        try expectEqual(MoneyFormat.menuBar(128), "¥128", "整数元")
+        try expectEqual(MoneyFormat.menuBar(Decimal(string: "0.5")!), "¥1", "五角进一")
+        try expectEqual(MoneyFormat.menuBar(0), "¥0", "可以为 ¥0")
+        try expectEqual(MoneyFormat.menuBar(Decimal(string: "15000.4")!), "¥15000", "不缩写也不加小数")
+        try expectEqual(MoneyFormat.menuBar(Decimal(string: "15000.5")!), "¥15001", "不用 k 缩写")
         try expectEqual(MoneyFormat.duration(3661), "1:01:01", "时分秒")
         try expectEqual(MoneyFormat.hours(8.5 * 3600), "8.5", "净工时展示")
+    }
+
+    func menuBarYuanAndVisibilitySetting() throws {
+        try expectEqual(AppSettings.default.showMenuBarEarnings, true, "默认显示菜单栏金额")
+
+        let suite = "idea8Progress.tests.\(UUID().uuidString)"
+        let defaults = try makeDefaults(suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let now = try makeDate(2026, 11, 3, 11, 0)
+        let model = EarningsModel(defaults: defaults, calendar: calendar, now: now, startTicker: false)
+        try expectEqual(model.settings.showMenuBarEarnings, true, "新安装默认打开")
+        let before = model.snapshot
+        model.setShowMenuBarEarnings(false, now: now)
+        try expectEqual(model.settings.showMenuBarEarnings, false, "可以关掉")
+        try expectDecimal(model.snapshot.todayEarned, before.todayEarned, "开关不改变今日已赚")
+        try expectDecimal(model.snapshot.earnRatePerHour, before.earnRatePerHour, "开关不改变速度")
+        try expectEqual(model.snapshot.workedSeconds, before.workedSeconds, "开关不改变工时")
+        try expectDecimal(model.snapshot.monthEarned, before.monthEarned, "开关不改变本月累计")
+        try expectEqual(model.snapshot.isEarningNow, before.isEarningNow, "开关不改变是否入账")
+        try expectEqual(model.settings.retirementDate == nil, true, "开关不改退休日")
+
+        let loaded = StateStore.load(defaults: defaults)
+        try expectEqual(loaded.settings.showMenuBarEarnings, false, "关闭状态写入 UserDefaults")
+        try expectDecimal(loaded.settings.monthlySalary, 15_000, "月薪没被开关改掉")
+
+        let restored = EarningsModel(defaults: defaults, calendar: calendar, now: now, startTicker: false)
+        try expectEqual(restored.settings.showMenuBarEarnings, false, "下次启动仍关闭")
+
+        let missing = """
+        {"settings":{"monthlySalary":"17850","schedule":{"workdays":[2,3,4,5,6],"workStartMinutes":600,"workEndMinutes":1230,"lunchStartMinutes":720,"lunchEndMinutes":840}}}
+        """
+        defaults.set(Data(missing.utf8), forKey: StateStore.storageKey)
+        let legacy = StateStore.load(defaults: defaults)
+        try expectEqual(legacy.settings.showMenuBarEarnings, true, "缺字段时默认显示")
+        try expectDecimal(legacy.settings.monthlySalary, 17_850, "缺字段不丢掉月薪")
     }
 
     private func monthly(_ salary: Decimal) -> AppSettings {

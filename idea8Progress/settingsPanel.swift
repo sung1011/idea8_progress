@@ -54,6 +54,7 @@ struct SettingsPanel: View {
             salaryField
             weekdaySection
             scheduleSection
+            menuBarEarningsToggle
             hotKeySection
         }
         .padding(.horizontal, 20)
@@ -270,6 +271,22 @@ struct SettingsPanel: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var menuBarEarningsToggle: some View {
+        Toggle(isOn: showMenuBarEarningsBinding) {
+            Text("菜单栏显示今日已赚")
+                .font(.system(size: 15))
+                .foregroundStyle(.primary)
+        }
+        .toggleStyle(.switch)
+    }
+
+    private var showMenuBarEarningsBinding: Binding<Bool> {
+        Binding(
+            get: { model.settings.showMenuBarEarnings },
+            set: { model.setShowMenuBarEarnings($0) }
+        )
     }
 
     private var hotKeySection: some View {

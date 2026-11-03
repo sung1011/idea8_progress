@@ -17,9 +17,10 @@ enum MoneyFormat {
         let formatter = NumberFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 0
         formatter.usesGroupingSeparator = false
+        formatter.roundingMode = .halfUp
         formatter.decimalSeparator = "."
         return formatter
     }()
@@ -45,9 +46,19 @@ enum MoneyFormat {
         return "¥\(number)"
     }
 
+    /// 菜单栏短格式：四舍五入到整数元，如 `¥128`。不保留小数，也不用 k 缩写。
     static func menuBar(_ value: Decimal) -> String {
-        let number = menuFormatter.string(from: NSDecimalNumber(decimal: value)) ?? "0.00"
+        let rounded = roundedYuan(value)
+        let number = menuFormatter.string(from: NSDecimalNumber(decimal: rounded)) ?? "0"
         return "¥\(number)"
+    }
+
+    /// 正数恰好在两个整数中间时进一。收入不为负，这就是常见的四舍五入。
+    private static func roundedYuan(_ value: Decimal) -> Decimal {
+        var source = value
+        var result = Decimal()
+        NSDecimalRound(&result, &source, 0, .plain)
+        return result
     }
 
     static func perHour(_ value: Decimal) -> String {

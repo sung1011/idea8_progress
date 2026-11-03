@@ -13,7 +13,10 @@ struct Idea8ProgressApp: App {
         MenuBarExtra {
             MenuBarPanel(model: model, pins: pins)
         } label: {
-            MenuBarLabel(snapshot: model.snapshot)
+            MenuBarLabel(
+                snapshot: model.snapshot,
+                showEarnings: model.settings.showMenuBarEarnings
+            )
                 .onAppear { pins.bind(model) }
         }
         .menuBarExtraStyle(.window)

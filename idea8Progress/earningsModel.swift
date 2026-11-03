@@ -66,6 +66,11 @@ final class EarningsModel: ObservableObject {
         commitSettings(now: now)
     }
 
+    func setShowMenuBarEarnings(_ visible: Bool, now: Date = Date()) {
+        settings.showMenuBarEarnings = visible
+        commitSettings(now: now)
+    }
+
     func toggleWeekday(_ weekday: Int, now: Date = Date()) {
         guard (1...7).contains(weekday) else { return }
         var schedule = settings.schedule
