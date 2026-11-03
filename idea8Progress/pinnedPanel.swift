@@ -88,7 +88,7 @@ final class PanelPinController: NSObject, ObservableObject, NSWindowDelegate {
         self.defaults = defaults
         self.isPinned = PanelPinStore.loadPinned(defaults: defaults)
         super.init()
-        if defaults === .standard, Self.shared == nil {
+        if defaults === UserDefaults.standard, Self.shared == nil {
             Self.shared = self
         }
     }
