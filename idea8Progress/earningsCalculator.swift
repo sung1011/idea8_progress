@@ -14,7 +14,7 @@ struct EarningsSnapshot: Equatable {
     var todayEarned: Decimal
     /// 此刻真正在往上跳的速度。计时关闭，或不在带薪时段时为 0。
     var earnRatePerHour: Decimal
-    /// 当前计薪方式折算后的时薪，与计时开关无关。
+    /// 月薪按本月工作日和每日净工时折算出的时薪，与计时开关无关。
     var contractedHourlyRate: Decimal
     /// 今天「计时开启 ∩ 带薪窗口」的秒数。
     var workedSeconds: TimeInterval
@@ -44,10 +44,8 @@ enum EarningsCalculator {
         let netSeconds = schedule.netPaidSeconds
         let workdayCount = workdayCount(inMonthOf: now, schedule: schedule, calendar: calendar)
         let pastCount = pastWorkdayCount(before: now, schedule: schedule, calendar: calendar)
-        let hourly = effectiveHourlyRate(
-            payMode: settings.payMode,
+        let ratePerHour = effectiveHourlyRate(
             monthlySalary: settings.monthlySalary,
-            hourlyRate: settings.hourlyRate,
             workdayCount: workdayCount,
             netSeconds: netSeconds
         )
@@ -57,16 +55,16 @@ enum EarningsCalculator {
             schedule: schedule,
             calendar: calendar
         )
-        let fullDay = earnings(seconds: netSeconds, hourlyRate: hourly)
-        let today = earnings(seconds: worked, hourlyRate: hourly)
+        let fullDay = earnings(seconds: netSeconds, ratePerHour: ratePerHour)
+        let today = earnings(seconds: worked, ratePerHour: ratePerHour)
         let month = fullDay * Decimal(pastCount) + today
         let earningNow = input.timer.isRunning && isInstantPaid(now: now, schedule: schedule, calendar: calendar)
 
         return EarningsSnapshot(
             now: now,
             todayEarned: today,
-            earnRatePerHour: earningNow ? hourly : 0,
-            contractedHourlyRate: hourly,
+            earnRatePerHour: earningNow ? ratePerHour : 0,
+            contractedHourlyRate: ratePerHour,
             workedSeconds: worked,
             scheduledNetSeconds: netSeconds,
             fullDayEarnings: fullDay,
@@ -78,29 +76,21 @@ enum EarningsCalculator {
         )
     }
 
-    /// 月薪模式：月薪 / (本月工作日数 × 每日净工时)。时薪模式：直接用填写的时薪。
+    /// 月薪 ÷（本月工作日数 × 每日净工时）。工作日或净工时为 0 时返回 0，避免除零。
     static func effectiveHourlyRate(
-        payMode: PayMode,
         monthlySalary: Decimal,
-        hourlyRate: Decimal,
         workdayCount: Int,
         netSeconds: TimeInterval
     ) -> Decimal {
-        switch payMode {
-        case .hourly:
-            guard hourlyRate > 0 else { return 0 }
-            return hourlyRate
-        case .monthly:
-            guard monthlySalary > 0, workdayCount > 0, netSeconds > 0 else { return 0 }
-            let hours = Decimal(netSeconds) / Decimal(3600)
-            return monthlySalary / (Decimal(workdayCount) * hours)
-        }
+        guard monthlySalary > 0, workdayCount > 0, netSeconds > 0 else { return 0 }
+        let hours = Decimal(netSeconds) / Decimal(3600)
+        return monthlySalary / (Decimal(workdayCount) * hours)
     }
 
-    static func earnings(seconds: TimeInterval, hourlyRate: Decimal) -> Decimal {
+    static func earnings(seconds: TimeInterval, ratePerHour: Decimal) -> Decimal {
         let safeSeconds = max(0, seconds)
-        guard safeSeconds > 0, hourlyRate > 0 else { return 0 }
-        return hourlyRate * Decimal(safeSeconds) / Decimal(3600)
+        guard safeSeconds > 0, ratePerHour > 0 else { return 0 }
+        return ratePerHour * Decimal(safeSeconds) / Decimal(3600)
     }
 
     static func isInstantPaid(now: Date, schedule: WorkSchedule, calendar: Calendar) -> Bool {

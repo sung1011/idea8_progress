@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000031 /* idea8ProgressApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* idea8ProgressApp.swift */; };
-		A10000000000000000000032 /* payMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* payMode.swift */; };
+		A10000000000000000000032 /* settingsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* settingsPanel.swift */; };
 		A10000000000000000000033 /* workSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* workSchedule.swift */; };
 		A10000000000000000000034 /* timerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* timerState.swift */; };
 		A10000000000000000000035 /* appSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* appSettings.swift */; };
@@ -35,7 +35,7 @@
 
 /* Begin PBXFileReference section */
 		A10000000000000000000011 /* idea8ProgressApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = idea8ProgressApp.swift; sourceTree = "<group>"; };
-		A10000000000000000000012 /* payMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = payMode.swift; sourceTree = "<group>"; };
+		A10000000000000000000012 /* settingsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = settingsPanel.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* workSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = workSchedule.swift; sourceTree = "<group>"; };
 		A10000000000000000000014 /* timerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = timerState.swift; sourceTree = "<group>"; };
 		A10000000000000000000015 /* appSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = appSettings.swift; sourceTree = "<group>"; };
@@ -83,7 +83,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000011 /* idea8ProgressApp.swift */,
-				A10000000000000000000012 /* payMode.swift */,
+				A10000000000000000000012 /* settingsPanel.swift */,
 				A10000000000000000000013 /* workSchedule.swift */,
 				A10000000000000000000014 /* timerState.swift */,
 				A10000000000000000000015 /* appSettings.swift */,
@@ -209,7 +209,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000031 /* idea8ProgressApp.swift in Sources */,
-				A10000000000000000000032 /* payMode.swift in Sources */,
+				A10000000000000000000032 /* settingsPanel.swift in Sources */,
 				A10000000000000000000033 /* workSchedule.swift in Sources */,
 				A10000000000000000000034 /* timerState.swift in Sources */,
 				A10000000000000000000035 /* appSettings.swift in Sources */,

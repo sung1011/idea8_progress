@@ -26,12 +26,13 @@ enum EarningsChecks {
             ("今天不重复算满勤", runner.todayIsNotCountedAsFullDay),
             ("月初还没有已过工作日", runner.firstWorkdayHasNoPastCredit),
             ("月末满勤加今天刚好等于月薪", runner.fullMonthMatchesSalary),
-            ("月薪折算与时薪等价", runner.monthlyRateMatchesHourly),
-            ("时薪模式忽略月薪", runner.hourlyModeIgnoresMonthlySalary),
+            ("月薪按本月工作日和净工时折算", runner.monthlyProrationMatchesHour),
+            ("改月薪会改速度", runner.changingMonthlySalaryChangesEarnRate),
             ("没有工作日或净工时为 0 时不崩溃", runner.zeroScheduleDoesNotCrash),
             ("只勾选周一会改变分母", runner.mondayOnlyChangesProration),
             ("跨天只把今天的带薪部分算进今日", runner.overnightSegmentCountsOnlyToday),
             ("计时状态可以保存再读出", runner.stateStoreRoundTrip),
+            ("旧存档里的时薪不再覆盖月薪", runner.legacyHourlyArchiveKeepsMonthlySalary),
             ("损坏的存档回退到默认值", runner.corruptStoreFallsBack),
             ("金额输入解析", runner.moneyParsing)
         ]
@@ -134,7 +135,7 @@ private struct Runner {
     func timerOffDoesNotEarn() throws {
         let start = try makeDate(2026, 11, 3, 10, 0)
         let later = try makeDate(2026, 11, 3, 11, 30)
-        let idle = snapshot(now: later, settings: hourly(100), timer: .idle())
+        let idle = snapshot(now: later, settings: monthly(17_850), timer: .idle())
         try expectDecimal(idle.todayEarned, 0, "没开过计时")
         try expectDecimal(idle.earnRatePerHour, 0, "速度为 0")
         try expectEqual(idle.timerRunning, false, "未计时")
@@ -142,7 +143,7 @@ private struct Runner {
         var timer = TimerState.idle()
         timer.start(now: start)
         timer.stop(now: try makeDate(2026, 11, 3, 11, 0))
-        let frozen = snapshot(now: later, settings: hourly(100), timer: timer)
+        let frozen = snapshot(now: later, settings: monthly(17_850), timer: timer)
         try expectEqual(frozen.workedSeconds, 3600, "停止后不再增加")
         try expectDecimal(frozen.todayEarned, 100, "停在 1 小时的收入")
         try expectDecimal(frozen.earnRatePerHour, 0, "停止后速度为 0")
@@ -154,9 +155,9 @@ private struct Runner {
         let start = try makeDate(2026, 11, 3, 10, 0)
         timer.start(now: start)
         let now = try makeDate(2026, 11, 3, 11, 0)
-        let snap = snapshot(now: now, settings: hourly(100), timer: timer)
+        let snap = snapshot(now: now, settings: monthly(17_850), timer: timer)
         try expectEqual(snap.workedSeconds, 3600, "工作 1 小时")
-        try expectDecimal(snap.todayEarned, 100, "时薪 100")
+        try expectDecimal(snap.todayEarned, 100, "折算时薪 100，工作 1 小时")
         try expectDecimal(snap.earnRatePerHour, 100, "正在入账")
         try expectEqual(snap.isEarningNow, true, "处于带薪时段")
         try expectEqual(abs(snap.progress - (3600 / (8.5 * 3600))) < 0.0000001, true, "进度约为 1/8.5")
@@ -165,7 +166,7 @@ private struct Runner {
     func lunchDoesNotEarn() throws {
         var timer = TimerState.idle()
         timer.start(now: try makeDate(2026, 11, 3, 12, 0))
-        let snap = snapshot(now: try makeDate(2026, 11, 3, 13, 0), settings: hourly(3600), timer: timer)
+        let snap = snapshot(now: try makeDate(2026, 11, 3, 13, 0), settings: monthly(17_850), timer: timer)
         try expectEqual(snap.workedSeconds, 0, "午休整小时")
         try expectDecimal(snap.todayEarned, 0, "午休没有收入")
         try expectEqual(snap.timerRunning, true, "计时器仍开着")
@@ -177,7 +178,7 @@ private struct Runner {
         var timer = TimerState.idle()
         timer.start(now: try makeDate(2026, 11, 3, 11, 30))
         timer.stop(now: try makeDate(2026, 11, 3, 14, 30))
-        let snap = snapshot(now: try makeDate(2026, 11, 3, 14, 30), settings: hourly(100), timer: timer)
+        let snap = snapshot(now: try makeDate(2026, 11, 3, 14, 30), settings: monthly(17_850), timer: timer)
         try expectEqual(snap.workedSeconds, 3600, "11:30–12:00 加 14:00–14:30")
         try expectDecimal(snap.todayEarned, 100, "只计 1 小时")
     }
@@ -185,13 +186,13 @@ private struct Runner {
     func outsideWorkWindowDoesNotEarn() throws {
         var evening = TimerState.idle()
         evening.start(now: try makeDate(2026, 11, 3, 21, 0))
-        let afterHours = snapshot(now: try makeDate(2026, 11, 3, 22, 0), settings: hourly(100), timer: evening)
+        let afterHours = snapshot(now: try makeDate(2026, 11, 3, 22, 0), settings: monthly(17_850), timer: evening)
         try expectEqual(afterHours.workedSeconds, 0, "21:00 之后")
         try expectDecimal(afterHours.earnRatePerHour, 0, "班次外速度为 0")
 
         var morning = TimerState.idle()
         morning.start(now: try makeDate(2026, 11, 3, 9, 0))
-        let partial = snapshot(now: try makeDate(2026, 11, 3, 10, 30), settings: hourly(100), timer: morning)
+        let partial = snapshot(now: try makeDate(2026, 11, 3, 10, 30), settings: monthly(17_850), timer: morning)
         try expectEqual(partial.workedSeconds, 1800, "9:00–10:30 只计 10:00 之后")
         try expectDecimal(partial.todayEarned, 50, "半小时")
     }
@@ -199,7 +200,7 @@ private struct Runner {
     func nonWorkdayDoesNotEarn() throws {
         var timer = TimerState.idle()
         timer.start(now: try makeDate(2026, 11, 1, 10, 0))
-        let snap = snapshot(now: try makeDate(2026, 11, 1, 12, 0), settings: hourly(100), timer: timer)
+        let snap = snapshot(now: try makeDate(2026, 11, 1, 12, 0), settings: monthly(17_850), timer: timer)
         try expectEqual(calendar.component(.weekday, from: snap.now), 1, "11-01 是周日")
         try expectEqual(snap.workedSeconds, 0, "未勾选的周日")
         try expectEqual(snap.pastWorkdayCount, 0, "月初周日之前没有工作日")
@@ -210,7 +211,7 @@ private struct Runner {
         var timer = TimerState.idle()
         timer.start(now: try makeDate(2026, 11, 2, 10, 0))
         timer.stop(now: try makeDate(2026, 11, 2, 11, 0))
-        let snap = snapshot(now: try makeDate(2026, 11, 3, 15, 0), settings: hourly(100), timer: timer)
+        let snap = snapshot(now: try makeDate(2026, 11, 3, 15, 0), settings: monthly(17_850), timer: timer)
         try expectEqual(snap.pastWorkdayCount, 1, "11-02 周一已过")
         try expectEqual(snap.workedSeconds, 0, "昨天的计时不算进今天")
         try expectDecimal(snap.todayEarned, 0, "今天没计时")
@@ -221,7 +222,7 @@ private struct Runner {
     func todayIsNotCountedAsFullDay() throws {
         var timer = TimerState.idle()
         timer.start(now: try makeDate(2026, 11, 3, 10, 0))
-        let snap = snapshot(now: try makeDate(2026, 11, 3, 11, 0), settings: hourly(100), timer: timer)
+        let snap = snapshot(now: try makeDate(2026, 11, 3, 11, 0), settings: monthly(17_850), timer: timer)
         try expectEqual(snap.pastWorkdayCount, 1, "今天周二不算已过")
         try expectDecimal(snap.todayEarned, 100, "今天只计 1 小时")
         try expectDecimal(snap.monthEarned, 950, "850 + 100，不能把今天再加一整份")
@@ -231,7 +232,7 @@ private struct Runner {
     func firstWorkdayHasNoPastCredit() throws {
         var timer = TimerState.idle()
         timer.start(now: try makeDate(2026, 11, 2, 10, 0))
-        let snap = snapshot(now: try makeDate(2026, 11, 2, 11, 0), settings: hourly(100), timer: timer)
+        let snap = snapshot(now: try makeDate(2026, 11, 2, 11, 0), settings: monthly(17_850), timer: timer)
         try expectEqual(snap.pastWorkdayCount, 0, "周一是本月第一个工作日")
         try expectDecimal(snap.monthEarned, 100, "只有今天")
     }
@@ -247,25 +248,28 @@ private struct Runner {
         try expectDecimal(snap.monthEarned, 17_850, "20 个满勤日 + 今天 = 月薪")
     }
 
-    func monthlyRateMatchesHourly() throws {
+    func monthlyProrationMatchesHour() throws {
         var timer = TimerState.idle()
         timer.start(now: try makeDate(2026, 11, 3, 10, 0))
         let now = try makeDate(2026, 11, 3, 11, 0)
-        let byMonth = snapshot(now: now, settings: monthly(17_850), timer: timer)
-        let byHour = snapshot(now: now, settings: hourly(100), timer: timer)
-        try expectDecimal(byMonth.contractedHourlyRate, 100, "17850 / (21 × 8.5) = 100")
-        try expectDecimal(byMonth.todayEarned, byHour.todayEarned, "今日已赚一致")
-        try expectDecimal(byMonth.monthEarned, byHour.monthEarned, "本月累计一致")
-        try expectDecimal(byMonth.fullDayEarnings, 850, "日满勤")
+        let snap = snapshot(now: now, settings: monthly(17_850), timer: timer)
+        try expectDecimal(snap.contractedHourlyRate, 100, "17850 / (21 × 8.5) = 100")
+        try expectDecimal(snap.todayEarned, 100, "工作 1 小时")
+        try expectDecimal(snap.monthEarned, 950, "满勤 850 + 今天 100")
+        try expectDecimal(snap.fullDayEarnings, 850, "日满勤")
+        try expectDecimal(snap.earnRatePerHour, 100, "计时中的速度等于折算时薪")
     }
 
-    func hourlyModeIgnoresMonthlySalary() throws {
-        var settings = monthly(999_999)
-        settings.payMode = .hourly
-        settings.hourlyRate = 80
-        let snap = snapshot(now: try makeDate(2026, 11, 3, 15, 0), settings: settings, timer: .idle())
-        try expectDecimal(snap.contractedHourlyRate, 80, "用时薪字段")
-        try expectDecimal(snap.fullDayEarnings, 680, "80 × 8.5")
+    func changingMonthlySalaryChangesEarnRate() throws {
+        var timer = TimerState.idle()
+        timer.start(now: try makeDate(2026, 11, 3, 10, 0))
+        let now = try makeDate(2026, 11, 3, 11, 0)
+        let low = snapshot(now: now, settings: monthly(17_850), timer: timer)
+        let high = snapshot(now: now, settings: monthly(35_700), timer: timer)
+        try expectDecimal(low.earnRatePerHour, 100, "17850 的速度")
+        try expectDecimal(high.earnRatePerHour, 200, "月薪加倍，速度加倍")
+        try expectDecimal(high.todayEarned, 200, "同一小时的收入加倍")
+        try expectDecimal(high.contractedHourlyRate, 200, "折算时薪跟着月薪走")
     }
 
     func zeroScheduleDoesNotCrash() throws {
@@ -305,12 +309,12 @@ private struct Runner {
     func overnightSegmentCountsOnlyToday() throws {
         var timer = TimerState.idle()
         timer.start(now: try makeDate(2026, 11, 2, 20, 0))
-        let morning = snapshot(now: try makeDate(2026, 11, 3, 9, 0), settings: hourly(100), timer: timer)
+        let morning = snapshot(now: try makeDate(2026, 11, 3, 9, 0), settings: monthly(17_850), timer: timer)
         try expectEqual(morning.workedSeconds, 0, "今天还没到 10:00")
         try expectDecimal(morning.monthEarned, 850, "昨天按满勤")
         try expectEqual(morning.isEarningNow, false, "9:00 不入账")
 
-        let later = snapshot(now: try makeDate(2026, 11, 3, 11, 0), settings: hourly(100), timer: timer)
+        let later = snapshot(now: try makeDate(2026, 11, 3, 11, 0), settings: monthly(17_850), timer: timer)
         try expectEqual(later.workedSeconds, 3600, "今天 10:00–11:00")
         try expectDecimal(later.todayEarned, 100, "不把昨晚 20:00–20:30 再加进今天")
         try expectDecimal(later.monthEarned, 950, "满勤 850 + 今天 100")
@@ -327,9 +331,7 @@ private struct Runner {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         var settings = AppSettings.default
-        settings.payMode = .hourly
-        settings.hourlyRate = Decimal(string: "123.45")!
-        settings.monthlySalary = -20
+        settings.monthlySalary = Decimal(string: "12345.67")!
         var schedule = settings.schedule
         schedule.workdays.insert(9)
         schedule.workdays.remove(2)
@@ -342,13 +344,33 @@ private struct Runner {
 
         StateStore.save(PersistedState(settings: settings, timer: timer), defaults: defaults)
         let loaded = StateStore.load(defaults: defaults)
-        try expectEqual(loaded.settings.payMode, .hourly, "计薪方式")
-        try expectDecimal(loaded.settings.hourlyRate, Decimal(string: "123.45")!, "时薪")
-        try expectDecimal(loaded.settings.monthlySalary, 0, "负数月薪被清掉")
+        try expectDecimal(loaded.settings.monthlySalary, Decimal(string: "12345.67")!, "月薪按十进制往返")
         try expectEqual(loaded.settings.schedule.workdays.contains(9), false, "非法星期被丢掉")
         try expectEqual(loaded.settings.schedule.workdays.contains(2), false, "取消的周一还在")
         try expectEqual(loaded.timer.isRunning, true, "后一段仍在计时")
         try expectEqual(loaded.timer.segments.count, 2, "两段都在")
+
+        settings.monthlySalary = -20
+        StateStore.save(PersistedState(settings: settings, timer: timer), defaults: defaults)
+        let sanitized = StateStore.load(defaults: defaults)
+        try expectDecimal(sanitized.settings.monthlySalary, 0, "负数月薪被清掉")
+    }
+
+    func legacyHourlyArchiveKeepsMonthlySalary() throws {
+        let suite = "idea8Progress.tests.\(UUID().uuidString)"
+        let defaults = try makeDefaults(suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let json = """
+        {"settings":{"payMode":"hourly","hourlyRate":"80","monthlySalary":"17850","schedule":{"workdays":[2,3,4,5,6],"workStartMinutes":600,"workEndMinutes":1230,"lunchStartMinutes":720,"lunchEndMinutes":840}},"timer":{"segments":[]}}
+        """
+        defaults.set(Data(json.utf8), forKey: StateStore.storageKey)
+        let loaded = StateStore.load(defaults: defaults)
+        try expectDecimal(loaded.settings.monthlySalary, 17_850, "仍读取月薪")
+        try expectEqual(loaded.settings.schedule, WorkSchedule.default, "排班还在")
+        let snap = snapshot(now: try makeDate(2026, 11, 3, 15, 0), settings: loaded.settings, timer: .idle())
+        try expectDecimal(snap.contractedHourlyRate, 100, "忽略旧时薪，按月薪折算")
+        try expectDecimal(snap.fullDayEarnings, 850, "日满勤按月薪")
     }
 
     func corruptStoreFallsBack() throws {
@@ -373,16 +395,8 @@ private struct Runner {
         try expectEqual(MoneyFormat.hours(8.5 * 3600), "8.5", "净工时展示")
     }
 
-    private func hourly(_ rate: Decimal) -> AppSettings {
-        var settings = AppSettings.default
-        settings.payMode = .hourly
-        settings.hourlyRate = rate
-        return settings
-    }
-
     private func monthly(_ salary: Decimal) -> AppSettings {
         var settings = AppSettings.default
-        settings.payMode = .monthly
         settings.monthlySalary = salary
         return settings
     }

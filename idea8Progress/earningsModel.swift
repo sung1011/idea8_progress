@@ -59,18 +59,8 @@ final class EarningsModel: ObservableObject {
         persist()
     }
 
-    func setPayMode(_ mode: PayMode, now: Date = Date()) {
-        settings.payMode = mode
-        commitSettings(now: now)
-    }
-
     func setMonthlySalary(_ value: Decimal, now: Date = Date()) {
         settings.monthlySalary = value < 0 ? 0 : value
-        commitSettings(now: now)
-    }
-
-    func setHourlyRate(_ value: Decimal, now: Date = Date()) {
-        settings.hourlyRate = value < 0 ? 0 : value
         commitSettings(now: now)
     }
 

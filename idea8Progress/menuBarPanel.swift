@@ -4,25 +4,30 @@ import SwiftUI
 struct MenuBarPanel: View {
     @ObservedObject var model: EarningsModel
 
-    @State private var monthlyText = ""
-    @State private var hourlyText = ""
+    @State private var showingSettings = false
 
     var body: some View {
+        Group {
+            if showingSettings {
+                SettingsPanel(model: model) {
+                    showingSettings = false
+                }
+            } else {
+                dashboard
+            }
+        }
+        .onAppear(perform: activateApp)
+    }
+
+    private var dashboard: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
             metrics
-            Divider()
-            settings
             Divider()
             footer
         }
         .padding(14)
         .frame(width: 360)
-        .onAppear {
-            monthlyText = MoneyFormat.editable(model.settings.monthlySalary)
-            hourlyText = MoneyFormat.editable(model.settings.hourlyRate)
-            activateApp()
-        }
     }
 
     private var header: some View {
@@ -87,61 +92,6 @@ struct MenuBarPanel: View {
         }
     }
 
-    private var settings: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("设置")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Picker("计薪方式", selection: payModeBinding) {
-                ForEach(PayMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
-            HStack(alignment: .top, spacing: 8) {
-                amountField(title: "月薪（元）", text: monthlyBinding)
-                amountField(title: "时薪（元/小时）", text: hourlyBinding)
-            }
-
-            Text("工作日")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            HStack(spacing: 6) {
-                ForEach(WorkSchedule.displayWeekdays, id: \.self) { weekday in
-                    weekdayButton(weekday)
-                }
-            }
-
-            HStack(spacing: 8) {
-                Text("上班")
-                    .frame(width: 32, alignment: .leading)
-                timePicker(workStartBinding)
-                Text("下班")
-                    .frame(width: 32, alignment: .leading)
-                timePicker(workEndBinding)
-            }
-            .font(.callout)
-
-            HStack(spacing: 8) {
-                Text("午休")
-                    .frame(width: 32, alignment: .leading)
-                timePicker(lunchStartBinding)
-                Text("至")
-                    .frame(width: 32, alignment: .center)
-                timePicker(lunchEndBinding)
-            }
-            .font(.callout)
-
-            Text(netCaption)
-                .font(.caption)
-                .foregroundStyle(model.settings.schedule.netPaidSeconds > 0 ? Color.secondary : Color.red)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     private var footer: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("计时关闭时不累计。午休、非上班时段、未勾选的星期也不计入。已过工作日按满勤补进本月。")
@@ -158,6 +108,10 @@ struct MenuBarPanel: View {
 
                 Spacer()
 
+                Button("设置") {
+                    showingSettings = true
+                }
+
                 Button("退出") {
                     NSApplication.shared.terminate(nil)
                 }
@@ -169,94 +123,6 @@ struct MenuBarPanel: View {
         Text(text)
             .font(.caption)
             .foregroundStyle(.secondary)
-    }
-
-    private func amountField(title: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            TextField(title, text: text)
-                .textFieldStyle(.roundedBorder)
-                .monospacedDigit()
-        }
-    }
-
-    private func timePicker(_ selection: Binding<Date>) -> some View {
-        DatePicker("", selection: selection, displayedComponents: .hourAndMinute)
-            .labelsHidden()
-            .controlSize(.small)
-            .frame(maxWidth: 108)
-    }
-
-    private func weekdayButton(_ weekday: Int) -> some View {
-        let selected = model.settings.schedule.workdays.contains(weekday)
-        return Button(WorkSchedule.shortSymbol(for: weekday)) {
-            model.toggleWeekday(weekday)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(selected ? Color.accentColor : Color.secondary.opacity(0.45))
-        .frame(maxWidth: .infinity)
-    }
-
-    private var payModeBinding: Binding<PayMode> {
-        Binding(
-            get: { model.settings.payMode },
-            set: { model.setPayMode($0) }
-        )
-    }
-
-    private var monthlyBinding: Binding<String> {
-        Binding(
-            get: { monthlyText },
-            set: { newValue in
-                monthlyText = newValue
-                if let value = MoneyFormat.parse(newValue) {
-                    model.setMonthlySalary(value)
-                }
-            }
-        )
-    }
-
-    private var hourlyBinding: Binding<String> {
-        Binding(
-            get: { hourlyText },
-            set: { newValue in
-                hourlyText = newValue
-                if let value = MoneyFormat.parse(newValue) {
-                    model.setHourlyRate(value)
-                }
-            }
-        )
-    }
-
-    private var workStartBinding: Binding<Date> {
-        minutesBinding(\.workStartMinutes)
-    }
-
-    private var workEndBinding: Binding<Date> {
-        minutesBinding(\.workEndMinutes)
-    }
-
-    private var lunchStartBinding: Binding<Date> {
-        minutesBinding(\.lunchStartMinutes)
-    }
-
-    private var lunchEndBinding: Binding<Date> {
-        minutesBinding(\.lunchEndMinutes)
-    }
-
-    private func minutesBinding(_ keyPath: WritableKeyPath<WorkSchedule, Int>) -> Binding<Date> {
-        Binding(
-            get: {
-                WorkSchedule.date(minutes: model.settings.schedule[keyPath: keyPath], calendar: model.calendar)
-            },
-            set: { newDate in
-                var schedule = model.settings.schedule
-                schedule[keyPath: keyPath] = WorkSchedule.minutes(from: newDate, calendar: model.calendar)
-                model.setSchedule(schedule)
-            }
-        )
     }
 
     private var statusText: String {
@@ -277,22 +143,9 @@ struct MenuBarPanel: View {
 
     private var rateCaption: String {
         let rate = MoneyFormat.perHour(model.snapshot.contractedHourlyRate)
-        switch model.settings.payMode {
-        case .monthly:
-            let days = model.snapshot.workdayCountInMonth
-            let hours = MoneyFormat.hours(model.snapshot.scheduledNetSeconds)
-            return "月薪按本月 \(days) 个工作日、每日 \(hours) 小时折算，时薪 \(rate)"
-        case .hourly:
-            return "时薪模式，开启且处于带薪时段时按 \(rate) 累计"
-        }
-    }
-
-    private var netCaption: String {
-        let schedule = model.settings.schedule
-        if schedule.netPaidSeconds <= 0 {
-            return "当前排班净工时为 0。请让下班晚于上班，且午休不要盖住整个班次。"
-        }
-        return "每日净带薪 \(MoneyFormat.hours(schedule.netPaidSeconds)) 小时（上班窗口扣除午休）"
+        let days = model.snapshot.workdayCountInMonth
+        let hours = MoneyFormat.hours(model.snapshot.scheduledNetSeconds)
+        return "月薪按本月 \(days) 个工作日、每日 \(hours) 小时折算，时薪 \(rate)"
     }
 
     private func activateApp() {
