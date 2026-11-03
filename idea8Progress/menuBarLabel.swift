@@ -14,6 +14,6 @@ struct MenuBarLabel: View {
     }
 
     private var symbolName: String {
-        snapshot.isEarningNow ? "play.circle.fill" : "pause.circle"
+        snapshot.isEarningNow ? "yensign.circle.fill" : "yensign.circle"
     }
 }
