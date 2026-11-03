@@ -20,118 +20,146 @@ struct MenuBarPanel: View {
     }
 
     private var dashboard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
             header
-            metrics
-            Divider()
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
+            hairline
+            hero
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 18)
+            hairline
+            speedRow
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+            hairline
+            progressSection
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
+                .padding(.bottom, 16)
+            hairline
+            monthSection
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 4)
             footer
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 16)
         }
-        .padding(14)
-        .frame(width: 360)
+        .frame(width: 336)
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("上班鼓励器")
-                    .font(.headline)
-                Text(statusText)
-                    .font(.caption)
-                    .foregroundStyle(statusColor)
-            }
-            Spacer()
+        HStack(alignment: .center) {
+            Text("上班鼓励器")
+                .font(.system(size: 13))
+                .foregroundStyle(.primary)
+            Spacer(minLength: 8)
             Text(MoneyFormat.clock(model.snapshot.now))
-                .font(.caption.monospacedDigit())
+                .font(.system(size: 13))
                 .foregroundStyle(.secondary)
+                .monospacedDigit()
         }
     }
 
-    private var metrics: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                metricTitle("今日已赚")
-                Text(MoneyFormat.currency(model.snapshot.todayEarned))
-                    .font(.system(size: 28, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-            }
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("今日已赚")
+                .font(.system(size: 15))
+                .foregroundStyle(.primary)
+            Text(MoneyFormat.currency(model.snapshot.todayEarned))
+                .font(.system(size: 40, weight: .heavy))
+                .foregroundStyle(.primary)
+                .monospacedDigit()
+                .tracking(-0.6)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-            VStack(alignment: .leading, spacing: 2) {
-                metricTitle("速度")
-                Text(MoneyFormat.perHour(model.snapshot.earnRatePerHour))
-                    .font(.title3.weight(.semibold))
+    private var speedRow: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("速度")
+                .font(.system(size: 15))
+                .foregroundStyle(.primary)
+            Spacer(minLength: 12)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(MoneyFormat.currency(model.snapshot.earnRatePerHour))/时")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.primary)
                     .monospacedDigit()
-                Text(rateCaption)
-                    .font(.caption)
+                Text("带薪时段")
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    metricTitle("工时进度")
-                    Spacer()
-                    Text(MoneyFormat.percent(model.snapshot.progress))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-                ProgressView(value: min(max(model.snapshot.progress, 0), 1))
-                Text("\(MoneyFormat.duration(model.snapshot.workedSeconds)) / \(MoneyFormat.hours(model.snapshot.scheduledNetSeconds)) 小时")
-                    .font(.subheadline.monospacedDigit())
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                metricTitle("本月累计")
-                Text(MoneyFormat.currency(model.snapshot.monthEarned))
-                    .font(.title3.weight(.semibold))
-                    .monospacedDigit()
-                Text("含已过工作日满勤 \(model.snapshot.pastWorkdayCount) 天，每日 \(MoneyFormat.currency(model.snapshot.fullDayEarnings))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    private var progressSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("工时进度")
+                .font(.system(size: 15))
+                .foregroundStyle(.primary)
+            HStack(spacing: 12) {
+                ThinProgressBar(value: model.snapshot.progress)
+                Text(progressText)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+        }
+    }
+
+    private var monthSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("本月累计")
+                .font(.system(size: 15))
+                .foregroundStyle(.primary)
+            Text(MoneyFormat.currency(model.snapshot.monthEarned))
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(.primary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text("已过 \(model.snapshot.pastWorkdayCount) 个完整工作日")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var footer: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("按排班自动累计：从上班到现在，扣除午休。非上班时段和未勾选的星期不计入。已过工作日按满勤补进本月。")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack {
-                Spacer()
-
-                Button("设置") {
-                    showingSettings = true
-                }
-
-                Button("退出") {
-                    NSApplication.shared.terminate(nil)
-                }
+        HStack {
+            Button("设置") {
+                showingSettings = true
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(.primary)
+            Spacer()
+            Button("退出") {
+                NSApplication.shared.terminate(nil)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.primary)
         }
+        .font(.system(size: 15))
     }
 
-    private func metricTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.caption)
-            .foregroundStyle(.secondary)
+    private var hairline: some View {
+        Divider()
+            .padding(.horizontal, 20)
     }
 
-    private var statusText: String {
-        model.snapshot.isEarningNow ? "正在入账" : "当前不计入收入"
-    }
-
-    private var statusColor: Color {
-        model.snapshot.isEarningNow ? .green : .secondary
-    }
-
-    private var rateCaption: String {
-        let rate = MoneyFormat.perHour(model.snapshot.contractedHourlyRate)
-        let days = model.snapshot.workdayCountInMonth
-        let hours = MoneyFormat.hours(model.snapshot.scheduledNetSeconds)
-        return "月薪按本月 \(days) 个工作日、每日 \(hours) 小时折算，时薪 \(rate)"
+    private var progressText: String {
+        let worked = MoneyFormat.hours(model.snapshot.workedSeconds)
+        let scheduled = MoneyFormat.hours(model.snapshot.scheduledNetSeconds)
+        return "\(worked) / \(scheduled) 小时"
     }
 
     private func activateApp() {
@@ -140,6 +168,26 @@ struct MenuBarPanel: View {
         } else {
             NSApp.activate(ignoringOtherApps: true)
         }
+    }
+}
+
+private struct ThinProgressBar: View {
+    var value: Double
+
+    var body: some View {
+        let fraction = min(max(value.isFinite ? value : 0, 0), 1)
+        Capsule()
+            .fill(Color.primary.opacity(0.12))
+            .frame(maxWidth: .infinity)
+            .frame(height: 6)
+            .overlay(alignment: .leading) {
+                GeometryReader { geo in
+                    Capsule()
+                        .fill(Color.blue)
+                        .frame(width: geo.size.width * fraction)
+                }
+            }
+            .accessibilityHidden(true)
     }
 }
 
